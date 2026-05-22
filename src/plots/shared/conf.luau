@@ -1,0 +1,6 @@
+return {
+	GRID_WIDTH = 8,
+	GRID_HEIGHT = 7,
+	GRID_TILE_SIZE = 32,
+	GRID_BUILD_SIZE = 1,
+}

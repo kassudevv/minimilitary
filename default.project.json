@@ -1,0 +1,80 @@
+{
+  "name": "fishing-minigame",
+  "emitLegacyScripts": false,
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Packages": {
+        "$path": "Packages"
+      },
+      "src": {
+        "$className": "Folder",
+        "accounts": {
+          "$className": "Folder",
+          "client": {
+            "$path": "src/accounts/client"
+          },
+          "shared": {
+            "$path": "src/accounts/shared"
+          }
+        },
+        "core": {
+          "$className": "Folder",
+          "client": {
+            "$path": "src/core/client"
+          },
+          "shared": {
+            "$path": "src/core/shared"
+          }
+        },
+        "plots": {
+          "$className": "Folder",
+          "client": {
+            "$path": "src/plots/client"
+          },
+          "shared": {
+            "$path": "src/plots/shared"
+          }
+        },
+        "units": {
+          "$className": "Folder",
+          "client": {
+            "$path": "src/units/client"
+          },
+          "shared": {
+            "$path": "src/units/shared"
+          }
+        }
+      }
+    },
+    "ServerScriptService": {
+      "src": {
+        "$className": "Folder",
+        "accounts": {
+          "$className": "Folder",
+          "server": {
+            "$path": "src/accounts/server"
+          }
+        },
+        "core": {
+          "$className": "Folder",
+          "server": {
+            "$path": "src/core/server"
+          }
+        },
+        "plots": {
+          "$className": "Folder",
+          "server": {
+            "$path": "src/plots/server"
+          }
+        },
+        "units": {
+          "$className": "Folder",
+          "server": {
+            "$path": "src/units/server"
+          }
+        }
+      }
+    }
+  }
+}

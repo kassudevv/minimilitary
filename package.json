@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^9.2.1"
+  },
+  "scripts": {
+    "router": "node tools/feature-router.js",
+    "build": "npm run router",
+    "watch": "chokidar \"src/**/*\" -c \"npm run router\"",
+    "sourcemap": "rojo sourcemap --watch default.project.json --output sourcemap.json",
+    "dev": "npm run build && concurrently \"npm run watch\" \"rojo serve\" \"npm run sourcemap\"",
+    "fp": "wally-package-types --sourcemap sourcemap.json Packages/"
+  }
+}

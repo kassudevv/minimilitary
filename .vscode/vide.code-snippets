@@ -1,0 +1,531 @@
+{
+  // ─── SETUP ───────────────────────────────────────────────────────────────────
+
+  "Vide Import": {
+    "prefix": "vide-import",
+    "description": "Import and destructure common Vide APIs",
+    "body": [
+      "local create  = Vide.create",
+      "local source  = Vide.source",
+      "local derive  = Vide.derive",
+      "local effect  = Vide.effect",
+      "local cleanup = Vide.cleanup",
+      "local show    = Vide.show",
+      "local values  = Vide.values",
+      "local indexes = Vide.indexes",
+      "local spring  = Vide.spring",
+      "local mount   = Vide.mount",
+      "local batch   = Vide.batch",
+      "$0"
+    ]
+  },
+
+  "Vide Mount": {
+    "prefix": "vide-mount",
+    "description": "Mount a root component into PlayerGui",
+    "body": [
+      "mount(function()",
+      "\treturn ${1:App}()",
+      "end, game.Players.LocalPlayer.PlayerGui)",
+      "$0"
+    ]
+  },
+
+  // ─── REACTIVITY ──────────────────────────────────────────────────────────────
+
+  "Source": {
+    "prefix": "vsource",
+    "description": "Create a Vide source",
+    "body": ["local ${1:name} = source(${2:value})"]
+  },
+
+  "Derive": {
+    "prefix": "vderive",
+    "description": "Create a derived/computed source",
+    "body": [
+      "local ${1:name} = derive(function()",
+      "\treturn ${2:expression}",
+      "end)"
+    ]
+  },
+
+  "Effect": {
+    "prefix": "veffect",
+    "description": "Create a reactive effect",
+    "body": ["effect(function()", "\t${1:-- body}", "end)"]
+  },
+
+  "Effect with Cleanup": {
+    "prefix": "veffect-cleanup",
+    "description": "Effect that cleans up a connection",
+    "body": [
+      "effect(function()",
+      "\tlocal conn = ${1:signal}:Connect(function()",
+      "\t\t${2:-- handler}",
+      "\tend)",
+      "\tcleanup(conn)",
+      "end)"
+    ]
+  },
+
+  "Root": {
+    "prefix": "vroot",
+    "description": "Create a root stable scope with destructor",
+    "body": [
+      "local destroy = Vide.root(function()",
+      "\t${1:-- setup}",
+      "end)",
+      "$0"
+    ]
+  },
+
+  "Batch": {
+    "prefix": "vbatch",
+    "description": "Batch multiple source updates into one effect trigger",
+    "body": ["batch(function()", "\t${1:-- update sources}", "end)"]
+  },
+
+  // ─── CREATE ──────────────────────────────────────────────────────────────────
+
+  "Create Instance": {
+    "prefix": "vcreate",
+    "description": "Create a Roblox instance",
+    "body": ["create \"${1:Frame}\" {", "\t${0}", "}"]
+  },
+
+  "ScreenGui": {
+    "prefix": "vscreengui",
+    "description": "Create a ScreenGui",
+    "body": [
+      "create \"ScreenGui\" {",
+      "\tName = \"${1:Gui}\",",
+      "\tResetOnSpawn = false,",
+      "\tZIndexBehavior = Enum.ZIndexBehavior.Sibling,",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "Frame": {
+    "prefix": "vframe",
+    "description": "Create a positioned Frame",
+    "body": [
+      "create \"Frame\" {",
+      "\tName = \"${1:Frame}\",",
+      "\tAnchorPoint = Vector2.new(${2:0.5}, ${3:0.5}),",
+      "\tPosition = UDim2.fromScale(${4:0.5}, ${5:0.5}),",
+      "\tSize = UDim2.fromOffset(${6:200}, ${7:100}),",
+      "\tBackgroundColor3 = Color3.fromHex(\"${8:#FFFFFF}\"),",
+      "\tBackgroundTransparency = ${9:0},",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "TextLabel": {
+    "prefix": "vtextlabel",
+    "description": "Create a TextLabel",
+    "body": [
+      "create \"TextLabel\" {",
+      "\tName = \"${1:Label}\",",
+      "\tSize = UDim2.fromScale(${2:1}, ${3:1}),",
+      "\tBackgroundTransparency = 1,",
+      "\tText = ${4:\"Hello\"},",
+      "\tTextColor3 = Color3.fromHex(\"${5:#FFFFFF}\"),",
+      "\tTextSize = ${6:16},",
+      "\tFont = Enum.Font.${7:Gotham},",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "TextButton": {
+    "prefix": "vtextbutton",
+    "description": "Create a TextButton with Activated handler",
+    "body": [
+      "create \"TextButton\" {",
+      "\tName = \"${1:Button}\",",
+      "\tSize = UDim2.fromOffset(${2:120}, ${3:40}),",
+      "\tBackgroundColor3 = Color3.fromHex(\"${4:#444444}\"),",
+      "\tText = \"${5:Click}\",",
+      "\tTextColor3 = Color3.fromHex(\"${6:#FFFFFF}\"),",
+      "\tFont = Enum.Font.${7:GothamBold},",
+      "\tTextSize = ${8:14},",
+      "\tAutoButtonColor = false,",
+      "",
+      "\tActivated = function()",
+      "\t\t${9:-- on click}",
+      "\tend,",
+      "",
+      "\tcreate \"UICorner\" { CornerRadius = UDim.new(0, ${10:8}) },",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "ImageLabel": {
+    "prefix": "vimagelabel",
+    "description": "Create an ImageLabel",
+    "body": [
+      "create \"ImageLabel\" {",
+      "\tName = \"${1:Image}\",",
+      "\tSize = UDim2.fromScale(${2:1}, ${3:1}),",
+      "\tBackgroundTransparency = 1,",
+      "\tImage = \"${4:rbxassetid://0}\",",
+      "\tScaleType = Enum.ScaleType.${5:Fit},",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "ScrollingFrame": {
+    "prefix": "vscroll",
+    "description": "Create a ScrollingFrame with auto canvas",
+    "body": [
+      "create \"ScrollingFrame\" {",
+      "\tName = \"${1:List}\",",
+      "\tSize = UDim2.fromScale(${2:1}, ${3:1}),",
+      "\tBackgroundTransparency = 1,",
+      "\tScrollBarThickness = ${4:4},",
+      "\tScrollBarImageColor3 = Color3.fromHex(\"${5:#888888}\"),",
+      "\tCanvasSize = UDim2.fromScale(0, 0),",
+      "\tAutomaticCanvasSize = Enum.AutomaticSize.${6:Y},",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  // ─── LAYOUT ──────────────────────────────────────────────────────────────────
+
+  "UICorner": {
+    "prefix": "vcorner",
+    "description": "UICorner with pixel radius",
+    "body": ["create \"UICorner\" { CornerRadius = UDim.new(0, ${1:8}) },"]
+  },
+
+  "UIStroke": {
+    "prefix": "vstroke",
+    "description": "UIStroke border",
+    "body": [
+      "create \"UIStroke\" {",
+      "\tColor = Color3.fromHex(\"${1:#FFFFFF}\"),",
+      "\tThickness = ${2:1},",
+      "\tTransparency = ${3:0},",
+      "},"
+    ]
+  },
+
+  "UIPadding (uniform)": {
+    "prefix": "vpadding",
+    "description": "UIPadding with the same value on all sides",
+    "body": [
+      "create \"UIPadding\" {",
+      "\tPaddingTop    = UDim.new(0, ${1:8}),",
+      "\tPaddingBottom = UDim.new(0, ${1:8}),",
+      "\tPaddingLeft   = UDim.new(0, ${1:8}),",
+      "\tPaddingRight  = UDim.new(0, ${1:8}),",
+      "},"
+    ]
+  },
+
+  "UIPadding (per-side)": {
+    "prefix": "vpadding-sides",
+    "description": "UIPadding with individual values per side",
+    "body": [
+      "create \"UIPadding\" {",
+      "\tPaddingTop    = UDim.new(0, ${1:0}),",
+      "\tPaddingBottom = UDim.new(0, ${2:0}),",
+      "\tPaddingLeft   = UDim.new(0, ${3:0}),",
+      "\tPaddingRight  = UDim.new(0, ${4:0}),",
+      "},"
+    ]
+  },
+
+  "UIPadding (px helper)": {
+    "prefix": "vpadding-px",
+    "description": "UIPadding using a px.udim utility (props.Padding pattern)",
+    "body": [
+      "create \"UIPadding\" {",
+      "\tPaddingTop    = px.udim(0, ${1:props.Padding}),",
+      "\tPaddingBottom = px.udim(0, ${1:props.Padding}),",
+      "\tPaddingLeft   = px.udim(0, ${1:props.Padding}),",
+      "\tPaddingRight  = px.udim(0, ${1:props.Padding}),",
+      "},"
+    ]
+  },
+
+  "UIListLayout": {
+    "prefix": "vlist",
+    "description": "UIListLayout",
+    "body": [
+      "create \"UIListLayout\" {",
+      "\tFillDirection = Enum.FillDirection.${1:Vertical},",
+      "\tHorizontalAlignment = Enum.HorizontalAlignment.${2:Center},",
+      "\tVerticalAlignment = Enum.VerticalAlignment.${3:Top},",
+      "\tSortOrder = Enum.SortOrder.${4:LayoutOrder},",
+      "\tPadding = UDim.new(0, ${5:8}),",
+      "},"
+    ]
+  },
+
+  "UIGridLayout": {
+    "prefix": "vgrid",
+    "description": "UIGridLayout",
+    "body": [
+      "create \"UIGridLayout\" {",
+      "\tCellSize = UDim2.fromOffset(${1:80}, ${2:80}),",
+      "\tCellPadding = UDim2.fromOffset(${3:8}, ${4:8}),",
+      "\tHorizontalAlignment = Enum.HorizontalAlignment.${5:Left},",
+      "\tSortOrder = Enum.SortOrder.${6:LayoutOrder},",
+      "},"
+    ]
+  },
+
+  "UIAspectRatioConstraint": {
+    "prefix": "vaspect",
+    "description": "UIAspectRatioConstraint",
+    "body": ["create \"UIAspectRatioConstraint\" { AspectRatio = ${1:1} },"]
+  },
+
+  "UISizeConstraint": {
+    "prefix": "vsizeconstraint",
+    "description": "UISizeConstraint with min/max",
+    "body": [
+      "create \"UISizeConstraint\" {",
+      "\tMinSize = Vector2.new(${1:0}, ${2:0}),",
+      "\tMaxSize = Vector2.new(${3:math.huge}, ${4:math.huge}),",
+      "},"
+    ]
+  },
+
+  // ─── DYNAMIC SCOPES ──────────────────────────────────────────────────────────
+
+  "show()": {
+    "prefix": "vshow",
+    "description": "Conditionally show a component",
+    "body": ["show(${1:boolSource}, ${2:Component}),"]
+  },
+
+  "show() with fallback": {
+    "prefix": "vshow-else",
+    "description": "show() with a fallback component when false",
+    "body": [
+      "show(${1:boolSource}, ${2:ComponentA}, function()",
+      "\treturn ${3:ComponentB}()",
+      "end),"
+    ]
+  },
+
+  "show() with delay": {
+    "prefix": "vshow-delay",
+    "description": "show() with a destruction delay (for exit animations)",
+    "body": [
+      "show(${1:boolSource}, function()",
+      "\treturn ${2:Component}(), ${3:0.4}",
+      "end),"
+    ]
+  },
+
+  "switch()": {
+    "prefix": "vswitch",
+    "description": "Switch between components by source value",
+    "body": [
+      "Vide.switch(${1:stateSource}) {",
+      "\t[\"${2:stateA}\"] = ${3:ComponentA},",
+      "\t[\"${4:stateB}\"] = ${5:ComponentB},",
+      "},"
+    ]
+  },
+
+  "values()": {
+    "prefix": "vvalues",
+    "description": "Render a component per value (objects, players, inventory)",
+    "body": [
+      "values(${1:tableSource}, function(${2:item}, ${3:indexSource})",
+      "\treturn ${4:Component} {",
+      "\t\t${0}",
+      "\t}",
+      "end),"
+    ]
+  },
+
+  "indexes()": {
+    "prefix": "vindexes",
+    "description": "Render a component per index (primitives, stat rows)",
+    "body": [
+      "indexes(${1:tableSource}, function(${2:valueSource}, ${3:index})",
+      "\treturn ${4:Component} {",
+      "\t\t${0}",
+      "\t}",
+      "end),"
+    ]
+  },
+
+  // ─── ANIMATION ───────────────────────────────────────────────────────────────
+
+  "spring()": {
+    "prefix": "vspring",
+    "description": "Spring-animated source (period, damping_ratio)",
+    "body": [
+      "local ${1:smoothValue} = spring(function()",
+      "\treturn ${2:targetSource}()",
+      "end, ${3:0.3}, ${4:1})"
+    ]
+  },
+
+  "spring() with control": {
+    "prefix": "vspring-control",
+    "description": "Spring with control handle for impulse/teleport",
+    "body": [
+      "local ${1:smoothValue}, ${2:control} = spring(function()",
+      "\treturn ${3:targetSource}()",
+      "end, ${4:0.3}, ${5:0.8})",
+      "",
+      "-- ${2:control}({ position = ... })  -- teleport",
+      "-- ${2:control}({ impulse  = ... })  -- add impulse"
+    ]
+  },
+
+  "spring (transparency)": {
+    "prefix": "vspring-transparency",
+    "description": "Spring for animating transparency (0 = visible, 1 = hidden)",
+    "body": [
+      "local ${1:transparency} = spring(function()",
+      "\treturn if ${2:isVisible}() then 0 else 1",
+      "end, ${3:0.25}, ${4:1})"
+    ]
+  },
+
+  // ─── COMPONENT PATTERNS ──────────────────────────────────────────────────────
+
+  "Component": {
+    "prefix": "vcomponent",
+    "description": "Typed Vide component function",
+    "body": [
+      "local function ${1:ComponentName}(props: {",
+      "\t${2:PropName}: ${3:string},",
+      "})",
+      "\treturn create \"${4:Frame}\" {",
+      "\t\t${0}",
+      "\t}",
+      "end",
+      "",
+      "return ${1:ComponentName}"
+    ]
+  },
+
+  "Component with state": {
+    "prefix": "vcomponent-state",
+    "description": "Vide component with internal source state",
+    "body": [
+      "local function ${1:ComponentName}(props: {",
+      "\t${2:PropName}: ${3:string},",
+      "})",
+      "\tlocal ${4:open} = source(${5:false})",
+      "",
+      "\treturn create \"${6:Frame}\" {",
+      "\t\t${0}",
+      "\t}",
+      "end",
+      "",
+      "return ${1:ComponentName}"
+    ]
+  },
+
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────────
+
+  "action()": {
+    "prefix": "vaction",
+    "description": "Run custom logic on a newly created instance",
+    "body": [
+      "Vide.action(function(${1:instance})",
+      "\t${2:-- use instance}",
+      "\tcleanup(function()",
+      "\t\t${3:-- cleanup}",
+      "\tend)",
+      "end),"
+    ]
+  },
+
+  "changed()": {
+    "prefix": "vchanged",
+    "description": "Listen for a property change on an instance",
+    "body": [
+      "Vide.changed(\"${1:Text}\", function(${2:value})",
+      "\t${3:-- handle}",
+      "end),"
+    ]
+  },
+
+  "Ref via action": {
+    "prefix": "vref",
+    "description": "Capture an instance into a source via action",
+    "body": [
+      "local ${1:ref} = source(nil :: ${2:Frame}?)",
+      "",
+      "create \"${2:Frame}\" {",
+      "\tVide.action(function(inst) ${1:ref}(inst) end),",
+      "\t${0}",
+      "}"
+    ]
+  },
+
+  "Section Divider": {
+    "prefix": "lsection",
+    "description": "Section divider comment for large single-file modules",
+    "body": [
+      "--* ────────────────────────────────────────────────────────────────────────────",
+      "--* ${1:SECTION}",
+      "--* ────────────────────────────────────────────────────────────────────────────",
+      "",
+      "$0"
+    ]
+  },
+
+  "Luau Class": {
+    "prefix": "lclass",
+    "description": "Luau OOP class with typed metatable pattern",
+    "body": [
+      "local ${1:ClassName} = {}",
+      "${1:ClassName}.__index = ${1:ClassName}",
+      "",
+      "type ${1:ClassName}Data = {}",
+      "",
+      "export type ${1:ClassName} = setmetatable<${1:ClassName}Data, typeof(${1:ClassName})>",
+      "",
+      "function ${1:ClassName}.new(${4:}): ${1:ClassName}",
+      "\tlocal self = setmetatable({} :: ${1:ClassName}Data, ${1:ClassName})",
+      "\t${0}",
+      "\treturn self",
+      "end",
+      "",
+      "return ${1:ClassName}"
+    ]
+  },
+
+  "Luau Method": {
+    "prefix": "lmethod",
+    "description": "Typed method on a Luau class",
+    "body": [
+      "function ${1:ClassName}.${2:methodName}(self: ${1:ClassName}${3:, })",
+      "\t${0}",
+      "end"
+    ]
+  },
+
+  "Luau Static Class": {
+    "prefix": "lclass-static",
+    "description": "Luau static class pattern (no instantiation)",
+    "body": [
+      "local ${1:ClassName} = {}",
+      "",
+      "function ${1:ClassName}.init(self: ${1:ClassName})",
+      "\t${0}",
+      "end",
+      "",
+      "type ${1:ClassName} = typeof(${1:ClassName}) & {}",
+      "",
+      "return ${1:ClassName} :: ${1:ClassName}"
+    ]
+  }
+}
