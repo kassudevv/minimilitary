@@ -4,8 +4,8 @@ local types = require("@game/ReplicatedStorage/src/units/shared/types")
 export type UnitData = {
 	owner: number,
 	unit: types.Unit,
-	guid: string,
 	id: number,
+	guid: string,
 	model: Model,
 	pawn: Part,
 

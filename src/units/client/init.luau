@@ -8,6 +8,7 @@ local TableUtil = require("../../Packages/TableUtil")
 local Unit = require("./client/unit")
 local constants = require("./shared/constants")
 local encoder = require("./shared/encoder")
+local index = require("./shared/index")
 local network = require("../core/shared/network")
 local store = require("./client/store")
 local types = require("./shared/types")
@@ -26,18 +27,24 @@ function Units.init(self: Units)
 	self:initControls()
 
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
-		for _, snapshot in snapshots do
-			-- print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
-			local unitDef = constants.getUnit(snapshot.unitId)
-			assert(unitDef ~= nil, "invalid unitDef")
-			local u = Unit.new(unitDef, snapshot)
-			self.units[u.guid] = u
-			if snapshot.owner == Players.LocalPlayer.UserId then
-				self.localUnits[u.guid] = u
+		task.spawn(function()
+			for i, snapshot in snapshots do
+				-- print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
+				local unitDef = constants.getUnit(snapshot.unitId)
+				assert(unitDef ~= nil, "invalid unitDef")
+				local u = Unit.new(unitDef, snapshot)
+				self.units[u.guid] = u
+
+				print("Loading units: ", snapshots)
+				if snapshot.owner == Players.LocalPlayer.UserId then
+					self.localUnits[u.guid] = u
+				end
+				task.wait()
 			end
-		end
+		end)
 	end)
-	network.Units.MoveUnit.OnClientEvent:Connect(function(guid: string, waypoints: buffer)
+	network.Units.MoveUnit.OnClientEvent:Connect(function(id: buffer, waypoints: buffer)
+		local guid = index.get(id)
 		for _, u in self.units do
 			if u.guid ~= guid then
 				continue
@@ -62,15 +69,15 @@ function Units.init(self: Units)
 		end
 	end)
 
-	network.Units.StartTargeting.OnClientEvent:Connect(function(guid: string, target: string)
-		local u = self.units[guid]
-		local t = self.units[target]
+	network.Units.StartTargeting.OnClientEvent:Connect(function(from: buffer, to: buffer)
+		local u = self.units[index.get(from)]
+		local t = self.units[index.get(to)]
 		if u and t then
 			u:startTargeting(t)
 		end
 	end)
-	network.Units.StopTargeting.OnClientEvent:Connect(function(guid: string)
-		local u = self.units[guid]
+	network.Units.StopTargeting.OnClientEvent:Connect(function(id: buffer)
+		local u = self.units[index.get(id)]
 		if u then
 			if u.targetingPromise and u.targetingPromise:getStatus() ~= "Cancelled" then
 				u.targetingPromise:cancel()
@@ -120,7 +127,7 @@ function Units.initControls(self: Units)
 			for _, u in self.localUnits do
 				local hl = u.model:FindFirstChild("TroopHighlight") :: Highlight
 				if hl then
-					hl.Enabled = false
+					hl:Destroy()
 				end
 			end
 

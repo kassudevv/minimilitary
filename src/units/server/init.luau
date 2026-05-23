@@ -8,7 +8,7 @@ local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
-local TICK_RATE = 1 / 10
+local TICK_RATE = 1 / 5
 local TARGET_GRID_CELL_SIZE = 32
 
 local Units = {}
@@ -60,7 +60,7 @@ function Units.init(self: Units)
 		end
 	end)
 
-	for _ = 1, 100 do
+	for _ = 1, 300 do
 		local unit = constants.getUnit("gunner")
 		assert(unit ~= nil, "unit is nil")
 		local pveUnitGuid = HttpService:GenerateGUID(false)

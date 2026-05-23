@@ -28,7 +28,7 @@ function PlayerUnits.new(plr: Player, unitCallbacks: { [string]: (string) -> () 
 
 	local rand = { "gunner" }
 	-- local rand = { "apache", "gunner", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-	for i = 1, 200 do
+	for i = 1, 20 do
 		local id = rand[((i - 1) % #rand) + 1]
 		if not constants.getUnit(id) then
 			print(`not found {id}`)

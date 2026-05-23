@@ -14,6 +14,7 @@ export type UnitData = {
 	owner: number?,
 	guid: string,
 	model: Model,
+	id: number,
 
 	animator: Animator,
 	loadedAnims: { [string]: Animation },

@@ -18,18 +18,18 @@ return {
 		PlaceBuilding = RF("PlaceBuilding") :: RF<(string, number, number), (boolean?)>,
 	},
 	Units = {
-		RequestUnits = RE("RequestUnits") :: RE<>, -- player loaded into plot, spawn units
+		RequestUnits = RE("A") :: RE<>, -- player loaded into plot, spawn units
 
-		LoadUnits = RE("LoadUnits") :: RE<any>, -- replicate unit to client
-		DestroyUnits = RE("DestroyUnits") :: RE<{ string }>, -- remove unit from client
+		LoadUnits = RE("B") :: RE<any>, -- replicate unit to client
+		DestroyUnits = RE("C") :: RE<{ string }>, -- remove unit from client
 
-		RequestPath = RE("RequestPath") :: RE<Vector3>, -- request unit pathfinding target
-		MoveUnit = RE("MoveUnit") :: RE<string, any>, -- replicate unit moveTo waypoints
+		RequestPath = RE("D") :: RE<Vector3>, -- request unit pathfinding target
+		MoveUnit = RE("E") :: RE<buffer, any>, -- replicate unit moveTo waypoints
 
-		StartTargeting = RE("StartTargeting") :: RE<string, string>, -- replicates targeting for clients
-		StopTargeting = RE("StopTargeting") :: RE<string>, -- replicates targeting for clients
+		StartTargeting = RE("F") :: RE<buffer, buffer>, -- replicates targeting for clients
+		StopTargeting = RE("G") :: RE<buffer>, -- replicates targeting for clients
 
-		ApplyPendingHit = RE("ApplyPendingHit") :: RE<string>,
+		ApplyPendingHit = RE("H") :: RE<string>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)

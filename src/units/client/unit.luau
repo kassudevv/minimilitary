@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/Promise")
 local attack = require("./attack")
 local clientTypes = require("./clientTypes")
+local index = require("../shared/index")
 local types = require("../shared/types")
 local unitRaycast = require("../shared/unitRaycast")
 
@@ -22,6 +23,8 @@ function Unit.new(unit: types.Unit, snapshot: types.UnitSnapshot): Unit
 	local self = setmetatable({} :: clientTypes.UnitData, Unit) :: Unit
 
 	self.guid = snapshot.guid
+	self.id = snapshot.id
+	index.register(self.guid, self.id)
 
 	self.owner = snapshot.owner
 	self.unit = unit
@@ -148,7 +151,15 @@ function Unit.startTargeting(self: Unit, target: Unit)
 				return resolve()
 			end
 
-			self:attack(target.model:GetPivot().Position, self.owner == Players.LocalPlayer.UserId, target.guid)
+			local isOwner = false
+			if
+				(self.owner == Players.LocalPlayer.UserId)
+				or (self.owner == -1 and target.owner == Players.LocalPlayer.UserId)
+			then
+				isOwner = true
+			end
+
+			self:attack(target.model:GetPivot().Position, isOwner, target.guid)
 		end)
 
 		onCancel(function()

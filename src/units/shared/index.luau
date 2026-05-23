@@ -1,40 +1,44 @@
--- src/units/shared/unitIndex.lua
-local UnitIndex = {}
+local Index = {
+	_counter = 0,
+	guidToId = {},
+	idToGuid = {},
+}
 
-local _guidToId: { [string]: number } = {}
-local _idToGuid: { [number]: string } = {}
-local _counter = 0
+function Index.registerNew(guid: string): number
+	Index._counter += 1
 
-function UnitIndex.register(guid: string): number
-	if _guidToId[guid] then
-		return _guidToId[guid]
+	if Index._counter > 4.2 * 10 ^ 9 then
+		Index._counter = 1
 	end
-	_counter += 1
-	_guidToId[guid] = _counter
-	_idToGuid[_counter] = guid
-	return _counter
+
+	Index.guidToId[guid] = Index._counter
+	Index.idToGuid[Index._counter] = guid
+
+	return Index._counter
 end
 
-function UnitIndex.registerExisting(guid: string, id: number)
-	_guidToId[guid] = id
-	_idToGuid[id] = guid
+function Index.register(guid: string, id: number): number
+	Index.guidToId[guid] = id
+	Index.idToGuid[id] = guid
+
+	return Index._counter
 end
 
-function UnitIndex.unregister(guid: string)
-	local id = _guidToId[guid]
-	if not id then
-		return
-	end
-	_guidToId[guid] = nil
-	_idToGuid[id] = nil
+function Index.get(buf: buffer): string
+	local num = Index.readBuf(buf)
+	return Index.idToGuid[num]
 end
 
-function UnitIndex.toId(guid: string): number?
-	return _guidToId[guid]
+function Index.readBuf(buf: buffer): number
+	return buffer.readu32(buf, 0)
 end
 
-function UnitIndex.toGuid(id: number): string?
-	return _idToGuid[id]
+function Index.writeBuf(value: number): buffer
+	local buf = buffer.create(4)
+	buffer.writeu32(buf, 0, value)
+	return buf
 end
 
-return UnitIndex
+type Index = typeof(Index) & {}
+
+return Index :: Index

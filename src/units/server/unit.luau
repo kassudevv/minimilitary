@@ -3,6 +3,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Promise = require("@game/ReplicatedStorage/Packages/Promise")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
+local index = require("@game/ReplicatedStorage/src/units/shared/index")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local serverTypes = require("./serverTypes")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
@@ -28,6 +29,7 @@ function Unit.new(
 	self.unit = unitDef
 	self.owner = owner and owner.UserId or -1
 	self.guid = guid
+	self.id = index.registerNew(guid)
 
 	self.health = unitDef.maxHealth
 
@@ -47,7 +49,7 @@ function Unit.new(
 		AgentHeight = 5,
 		AgentCanJump = true,
 		AgentMaxSlope = 90,
-		WaypointSpacing = 10,
+		WaypointSpacing = 32,
 	})
 
 	self.pendingHits = {}
@@ -61,6 +63,7 @@ function Unit.getSnapshot(self: Unit): types.UnitSnapshot
 		owner = self.owner,
 		unitId = self.unit.id or "",
 		position = self.pawn.CFrame,
+		id = self.id,
 	}
 end
 
@@ -105,7 +108,7 @@ function Unit.startTargeting(self: Unit, target: Unit)
 
 			onCancel(function()
 				cancelled = true
-				network.Units.StopTargeting:FireAllClients(self.guid)
+				network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
 				conn:Disconnect()
 			end)
 
@@ -115,19 +118,19 @@ function Unit.startTargeting(self: Unit, target: Unit)
 				return
 			end
 
-			network.Units.StartTargeting:FireAllClients(self.guid, target.guid)
+			network.Units.StartTargeting:FireAllClients(index.writeBuf(self.id), index.writeBuf(target.id))
 			conn = RunService.Heartbeat:Connect(function(dt)
 				local elapsed = os.clock() - self.lastAttackTs
 				if elapsed < 1 / self.unit.firerate then
 					return
 				end
 				if not target.pawn.Parent or target.health <= 0 then
-					network.Units.StopTargeting:FireAllClients(self.guid)
+					network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
 					conn:Disconnect()
 					return resolve()
 				end
 				if (self.pawn.Position - target.pawn.Position).Magnitude > self.unit.range then
-					network.Units.StopTargeting:FireAllClients(self.guid)
+					network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
 					conn:Disconnect()
 					return resolve()
 				end
@@ -225,7 +228,7 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 		end)
 		rs(self.movePromise)
 
-		network.Units.MoveUnit:FireAllClients(self.guid, encoder.encodeWaypoints(wps))
+		network.Units.MoveUnit:FireAllClients(index.writeBuf(self.id), encoder.encodeWaypoints(wps))
 	end)
 end
 
