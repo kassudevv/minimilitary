@@ -2,7 +2,7 @@ local Promise = require("@game/ReplicatedStorage/Packages/Promise")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 
 export type UnitData = {
-	owner: number,
+	owner: string,
 	unit: types.Unit,
 	id: number,
 	guid: string,

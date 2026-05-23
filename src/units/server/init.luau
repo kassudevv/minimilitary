@@ -176,7 +176,7 @@ function Units.scanTargets(self: Units)
 		end
 
 		if nearest and nearestDist <= targetRange then
-			if unit.owner ~= -1 then
+			if unit.owner ~= "pve" then
 				local closest = closestPointOnCircle(
 					nearest.pawn.Position,
 					attackRange * math.random(50, 90) * 0.01,

@@ -29,14 +29,16 @@ function Units.init(self: Units)
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
 		task.spawn(function()
 			for i, snapshot in snapshots do
-				-- print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
+				if self.units[snapshot.guid] then
+					continue
+				end
+
 				local unitDef = constants.getUnit(snapshot.unitId)
 				assert(unitDef ~= nil, "invalid unitDef")
 				local u = Unit.new(unitDef, snapshot)
 				self.units[u.guid] = u
 
-				print("Loading units: ", snapshots)
-				if snapshot.owner == Players.LocalPlayer.UserId then
+				if snapshot.owner == Players.LocalPlayer.Name then
 					self.localUnits[u.guid] = u
 				end
 				task.wait()

@@ -153,8 +153,8 @@ function Unit.startTargeting(self: Unit, target: Unit)
 
 			local isOwner = false
 			if
-				(self.owner == Players.LocalPlayer.UserId)
-				or (self.owner == -1 and target.owner == Players.LocalPlayer.UserId)
+				(self.owner == Players.LocalPlayer.Name)
+				or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
 			then
 				isOwner = true
 			end

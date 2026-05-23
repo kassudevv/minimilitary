@@ -27,7 +27,7 @@ function Unit.new(
 	local self = setmetatable({} :: serverTypes.UnitData, Unit) :: Unit
 
 	self.unit = unitDef
-	self.owner = owner and owner.UserId or -1
+	self.owner = owner and owner.Name or "pve"
 	self.guid = guid
 	self.id = index.registerNew(guid)
 
@@ -65,10 +65,6 @@ function Unit.getSnapshot(self: Unit): types.UnitSnapshot
 		position = self.pawn.CFrame,
 		id = self.id,
 	}
-end
-
-function Unit.isPve(self: Unit)
-	return self.owner == -1
 end
 
 function Unit.applyPendingHit(self: Unit)
