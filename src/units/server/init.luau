@@ -3,7 +3,6 @@ local RunService = game:GetService("RunService")
 local PlayerUnits = require("@self/playerUnits")
 local SpatialGrid = require("@self/spatialGrid")
 local Unit = require("@self/unit")
-local attack = require("@game/ReplicatedStorage/src/units/client/attack")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
@@ -26,7 +25,7 @@ function Units.init(self: Units)
 				return
 			end
 
-			print(`[unit] destroyed {guid}`)
+			-- print(`[unit] destroyed {guid}`)
 			self:destroyUnit(unit.guid)
 		end,
 
@@ -36,7 +35,7 @@ function Units.init(self: Units)
 				return
 			end
 
-			print(`[unit] dealt {amount} damage to {guid}`)
+			-- print(`[unit] dealt {amount} damage to {guid}`)
 		end,
 	}
 

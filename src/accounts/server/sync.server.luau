@@ -40,6 +40,6 @@ Charm.observe(accountStore.getAccounts, function(initialAccount: accountStore.Ac
 
 	Charm.effect(function()
 		local account = getAccount()
-		print(`[accounts] state: `, account)
+		-- print(`[accounts] state: `, account)
 	end)
 end)

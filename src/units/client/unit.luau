@@ -7,7 +7,6 @@ local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/Promise")
 local attack = require("./attack")
 local clientTypes = require("./clientTypes")
-local network = require("../../core/shared/network")
 local types = require("../shared/types")
 local unitRaycast = require("../shared/unitRaycast")
 
@@ -19,11 +18,12 @@ Unit.__index = Unit
 
 export type Unit = setmetatable<clientTypes.UnitData, typeof(Unit)>
 
-function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFrame): Unit
+function Unit.new(unit: types.Unit, snapshot: types.UnitSnapshot): Unit
 	local self = setmetatable({} :: clientTypes.UnitData, Unit) :: Unit
 
-	self.guid = guid
-	self.owner = owner
+	self.guid = snapshot.guid
+
+	self.owner = snapshot.owner
 	self.unit = unit
 
 	self.loadedAnims = {}
@@ -118,7 +118,7 @@ function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFram
 		self:playAnimation("Idle")
 
 		task.wait()
-		local ground = self:raycastGround(position.Position)
+		local ground = self:raycastGround(snapshot.position.Position)
 		if self.unit.movementMode == "flying" then
 			ground += Vector3.new(0, 16, 0)
 		end

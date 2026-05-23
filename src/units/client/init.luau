@@ -27,10 +27,10 @@ function Units.init(self: Units)
 
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
 		for _, snapshot in snapshots do
-			print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
+			-- print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
 			local unitDef = constants.getUnit(snapshot.unitId)
 			assert(unitDef ~= nil, "invalid unitDef")
-			local u = Unit.new(unitDef, snapshot.guid, snapshot.owner, snapshot.position)
+			local u = Unit.new(unitDef, snapshot)
 			self.units[u.guid] = u
 			if snapshot.owner == Players.LocalPlayer.UserId then
 				self.localUnits[u.guid] = u

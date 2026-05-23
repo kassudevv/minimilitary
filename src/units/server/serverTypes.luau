@@ -5,6 +5,7 @@ export type UnitData = {
 	owner: number,
 	unit: types.Unit,
 	guid: string,
+	id: number,
 	model: Model,
 	pawn: Part,
 
