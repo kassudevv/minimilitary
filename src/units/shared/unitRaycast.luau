@@ -124,7 +124,7 @@ function buildFormation(center: Vector3, units: { any }, padding: number): { Vec
 			index = i,
 			x = math.cos(angle) * spawnRadius,
 			y = math.sin(angle) * spawnRadius,
-			radius = math.abs(unit.unit.boundsRadius),
+			radius = math.abs(unit.def.boundsRadius),
 		})
 	end
 

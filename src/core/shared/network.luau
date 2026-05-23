@@ -30,6 +30,8 @@ return {
 		StopTargeting = RE("G") :: RE<buffer>, -- replicates targeting for clients
 
 		ApplyPendingHit = RE("H") :: RE<string>,
+
+		ReplicateSM = RE("I") :: RE<string, "idle" | "moving" | "targeting", { [string]: any }>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)

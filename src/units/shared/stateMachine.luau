@@ -7,6 +7,7 @@ type StateMachineData = {
 
 	handlers: { [string]: {
 		onEnter: (string) -> (),
+		tick: (number) -> (),
 		onExit: (string) -> (),
 	} },
 }
@@ -23,7 +24,9 @@ function StateMachine.new(initial: StateMachineData): StateMachine
 	return self
 end
 
-function StateMachine.tick(self: StateMachine, dt: number) end
+function StateMachine.tick(self: StateMachine, dt: number)
+	self.handlers[self.state].tick(dt)
+end
 
 function StateMachine.transition(self: StateMachine, newState: "idle" | "moving" | "targeting", data: { [string]: any })
 	local prev = self.state

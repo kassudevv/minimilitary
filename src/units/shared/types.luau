@@ -1,9 +1,7 @@
 export type UnitSnapshot = {
-	guid: string,
-	id: number,
-	owner: string,
 	unitId: string,
 	position: CFrame,
+	guid: string,
 }
 
 export type Unit = {
@@ -19,7 +17,7 @@ export type Unit = {
 	scale: number,
 	firerate: number,
 
-	animToBulletDelay: number?,
+	shotDelay: number?,
 	offset: number?,
 	boundsRadius: number,
 

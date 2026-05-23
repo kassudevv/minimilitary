@@ -1,22 +1,20 @@
-local Unit = require("./unit")
-
 local SpatialGrid = {}
 SpatialGrid.__index = SpatialGrid
 
 export type SpatialGrid = {
 	cellSize: number,
-	cells: { [string]: { Unit.Unit } },
+	cells: { [string]: { any } },
 
 	clear: (self: SpatialGrid) -> (),
-	insert: (self: SpatialGrid, unit: Unit.Unit) -> (),
-	rebuild: (self: SpatialGrid, units: { [string]: Unit.Unit }) -> (),
+	insert: (self: SpatialGrid, unit: any) -> (),
+	rebuild: (self: SpatialGrid, units: { [string]: any }) -> (),
 	forEachEnemyInRange: (
 		self: SpatialGrid,
-		sourceUnit: Unit.Unit,
+		sourceUnit: any,
 		range: number,
-		callback: (target: Unit.Unit, dist: number) -> ()
+		callback: (target: any, dist: number) -> ()
 	) -> (),
-	getEnemiesInRange: (self: SpatialGrid, sourceUnit: Unit.Unit, range: number) -> { Unit.Unit },
+	getEnemiesInRange: (self: SpatialGrid, sourceUnit: any, range: number) -> { any },
 }
 
 local function getCellCoord(pos: Vector3, cellSize: number): (number, number)
@@ -45,7 +43,7 @@ function SpatialGrid.clear(self: SpatialGrid)
 	table.clear(self.cells)
 end
 
-function SpatialGrid.insert(self: SpatialGrid, unit: Unit.Unit)
+function SpatialGrid.insert(self: SpatialGrid, unit: any)
 	local x, z = getCellCoord(unit.pawn.Position, self.cellSize)
 	local key = getCellKey(x, z)
 
@@ -58,7 +56,7 @@ function SpatialGrid.insert(self: SpatialGrid, unit: Unit.Unit)
 	table.insert(cell, unit)
 end
 
-function SpatialGrid.rebuild(self: SpatialGrid, units: { [string]: Unit.Unit })
+function SpatialGrid.rebuild(self: SpatialGrid, units: { [string]: any })
 	self:clear()
 
 	for _, unit in units do
@@ -68,9 +66,9 @@ end
 
 function SpatialGrid.forEachEnemyInRange(
 	self: SpatialGrid,
-	sourceUnit: Unit.Unit,
+	sourceUnit: any,
 	range: number,
-	callback: (target: Unit.Unit, dist: number) -> ()
+	callback: (target: any, dist: number) -> ()
 )
 	local sourcePos = sourceUnit.pawn.Position
 	local sourceCellX, sourceCellZ = getCellCoord(sourcePos, self.cellSize)
@@ -98,7 +96,7 @@ function SpatialGrid.forEachEnemyInRange(
 	end
 end
 
-function SpatialGrid.getEnemiesInRange(self: SpatialGrid, sourceUnit: Unit.Unit, range: number): { Unit.Unit }
+function SpatialGrid.getEnemiesInRange(self: SpatialGrid, sourceUnit: any, range: number): { any }
 	local results = {}
 
 	self:forEachEnemyInRange(sourceUnit, range, function(target)

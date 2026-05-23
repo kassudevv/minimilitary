@@ -12,7 +12,6 @@ local unitsById: { [string]: Unit } = {
 		maxHealth = 12,
 		damage = 6,
 		range = 64,
-		animToBulletDelay = 0.1,
 
 		speed = 12,
 		scale = 0.6,
@@ -45,8 +44,7 @@ local unitsById: { [string]: Unit } = {
 		scale = 1.8,
 		firerate = 0.4,
 
-		-- animation params
-		animToBulletDelay = 0.3555,
+		shotDelay = 0.48,
 		boundsRadius = 8,
 	},
 	abramsx = {
@@ -59,9 +57,6 @@ local unitsById: { [string]: Unit } = {
 		speed = 12,
 		scale = 2,
 		firerate = 0.5,
-
-		-- animation params
-		animToBulletDelay = 0.3555,
 		boundsRadius = 8,
 	},
 	tiger1 = {
@@ -74,10 +69,8 @@ local unitsById: { [string]: Unit } = {
 		speed = 10,
 		scale = 1.8,
 		firerate = 0.4,
-
-		-- animation params
-		animToBulletDelay = 0.3555,
 		boundsRadius = 8,
+		shotDelay = 0.48,
 	},
 	abramsghost = {
 		name = "Abrams Ghost Tank",
@@ -89,9 +82,7 @@ local unitsById: { [string]: Unit } = {
 		speed = 12,
 		scale = 1.6,
 		firerate = 0.25,
-
-		-- animation params
-		animToBulletDelay = 0.3555,
+		shotDelay = 0.3555,
 		boundsRadius = 8,
 	},
 	apache = {
@@ -104,9 +95,6 @@ local unitsById: { [string]: Unit } = {
 		speed = 14,
 		scale = 1.6,
 		firerate = 0.25,
-
-		-- animation params
-		animToBulletDelay = 0,
 		boundsRadius = 8,
 		attackOverride = "helicopter_missiles",
 		movementMode = "flying",
@@ -121,9 +109,6 @@ local unitsById: { [string]: Unit } = {
 		speed = 12,
 		scale = 1.4,
 		firerate = 5,
-
-		-- animation params
-		animToBulletDelay = 0,
 		boundsRadius = 4,
 		movementMode = "flying",
 	},

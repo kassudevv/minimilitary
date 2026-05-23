@@ -2,3 +2,4 @@ std = "roblox"
 
 [rules]
 mixed_table = "allow"
+allow_unused_self = "true"
