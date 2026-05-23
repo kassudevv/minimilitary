@@ -11,7 +11,7 @@ export type UnitData = {
 	faceTarget: (UnitData, Vector3) -> (),
 
 	unit: types.Unit,
-	owner: Player,
+	owner: number?,
 	guid: string,
 	model: Model,
 

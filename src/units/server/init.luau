@@ -1,219 +1,172 @@
-local PathfindingService = game:GetService("PathfindingService")
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local Promise = require("@game/ReplicatedStorage/Packages/Promise")
-local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
-local accountStore = require("../accounts/server/accountStore")
-local accounts = require("../accounts/server")
+local PlayerUnits = require("@self/playerUnits")
+local SpatialGrid = require("@self/spatialGrid")
+local Unit = require("@self/unit")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
-local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
-local serverTypes = require("@self/serverTypes")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
---* ────────────────────────────────────────────────────────────────────────────
---* UNIT
---* ────────────────────────────────────────────────────────────────────────────
-local Unit = {}
-Unit.__index = Unit
-
-export type Unit = setmetatable<serverTypes.UnitData, typeof(Unit)>
-
-function Unit.new(owner: Player, unitDef: types.Unit, position: CFrame, guid: string): Unit
-	local self = setmetatable({} :: serverTypes.UnitData, Unit) :: Unit
-
-	self.unit = unitDef
-	self.owner = owner
-	self.guid = guid
-
-	self.pawn = Instance.new("Part") :: Part
-	self.pawn.Anchored = true
-	self.pawn.CFrame = position
-	self.pawn.CanCollide = false
-	self.pawn.Size = Vector3.new(1.5, 3, 1.5)
-	self.pawn.Color = Color3.fromHex("#ffaa00")
-	self.pawn.Parent = Workspace.Camera
-
-	self.pathfinder = PathfindingService:CreatePath({
-		AgentRadius = 1,
-		AgentHeight = 5,
-		AgentCanJump = true,
-		AgentMaxSlope = 90,
-		WaypointSpacing = 10,
-	})
-
-	return self
-end
-
-function Unit.getSnapshot(self: Unit): types.UnitSnapshot
-	return {
-		guid = self.guid,
-		owner = self.owner,
-		unitId = self.unit.id or "",
-		position = self.pawn.CFrame,
-	}
-end
-
-function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
-	return Promise.new(function(rs, rj)
-		if self.movePromise and self.movePromise:getStatus() ~= "Cancelled" then
-			self.movePromise:cancel()
-		end
-
-		local wps: { Vector3 } = {}
-		local isFlying = self.unit.movementMode == "flying"
-		-- ground troop
-		if not isFlying then
-			self.pathfinder:ComputeAsync(self.pawn.Position, target)
-			if self.pathfinder.Status ~= Enum.PathStatus.Success then
-				return rj()
-			end
-			local waypoints = self.pathfinder:GetWaypoints()
-			for _, wp in waypoints do
-				table.insert(wps, Vector3.new(wp.Position.X, wp.Position.Y, wp.Position.Z))
-			end
-		else
-			table.insert(wps, Vector3.new(self.pawn.Position.X, self.pawn.Position.Y, self.pawn.Position.Z))
-			table.insert(wps, Vector3.new(target.X, target.Y, target.Z))
-		end
-
-		for i, wp in wps do
-			local params = unitRaycast.getRaycastParams()
-			local rcResult = Workspace:Raycast(wp + Vector3.new(0, 900, 0), -Vector3.yAxis * 1000, params)
-			if rcResult then
-				wps[i] = Vector3.new(wp.X, rcResult.Position.Y + (isFlying and 16 or 0), wp.Z)
-			end
-		end
-
-		local totalLength = unitRaycast.getPathLength(wps)
-
-		self.movePromise = Promise.new(function(resolve, reject, onCancel)
-			local conn: RBXScriptConnection
-			local startTime = os.clock()
-			conn = RunService.Heartbeat:Connect(function(dt)
-				local elapsed = os.clock() - startTime
-				local distance = math.max(elapsed * self.unit.speed * 1, 0)
-
-				unitRaycast.setUnitPositionWithOrientationFromSampledPath(self.pawn, wps, distance, self.unit.offset)
-
-				if distance >= totalLength then
-					conn:Disconnect()
-					resolve()
-				end
-			end)
-
-			onCancel(function()
-				conn:Disconnect()
-			end)
-		end)
-
-		rs(self.movePromise)
-
-		network.Units.MoveUnit:FireAllClients(self.guid, encoder.encodeWaypoints(wps))
-	end)
-end
-
-function Unit.attack(self: Unit, target: Vector3): Promise.Class
-	return Promise.new(function(rs) end)
-end
-
---* ────────────────────────────────────────────────────────────────────────────
---* UNITS
---* ────────────────────────────────────────────────────────────────────────────
-local PlayerUnits = {}
-PlayerUnits.__index = PlayerUnits
-
-type PlayerUnitsData = {
-	owner: Player,
-	units: { Unit },
-}
-
-export type PlayerUnits = setmetatable<PlayerUnitsData, typeof(PlayerUnits)>
-
-function PlayerUnits.new(plr: Player): PlayerUnits
-	local self = setmetatable({} :: PlayerUnitsData, PlayerUnits)
-
-	self.owner = plr
-	self.units = {}
-
-	task.wait(1)
-
-	-- local rand = { "apache" }
-	local rand = { "gunner", "gunner", "gunner", "juggernaut", "apache", "abrams", "tiger1", "littlebird", "abramsx" }
-	for i = 1, 3 do
-		local id = rand[((i - 1) % #rand) + 1]
-		if not constants.getUnit(id) then
-			print(`not found {id}`)
-			return self
-		end
-		accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
-	end
-
-	local account = accountStore.getAccount(plr.Name)
-	if account then
-		for guid, uData in account.units do
-			local unitDef = constants.getUnit(uData.unitId) :: types.Unit
-			local char = self.owner.Character or self.owner.CharacterAdded:Wait()
-			table.insert(
-				self.units,
-				Unit.new(
-					self.owner,
-					unitDef,
-					char:GetPivot() * CFrame.new(math.random() * 20, 0, math.random() * 20),
-					guid
-				)
-			)
-		end
-
-		local snapshot: { types.UnitSnapshot } = {}
-		for _, u in self.units do
-			table.insert(snapshot, u:getSnapshot())
-		end
-		network.Units.LoadUnits:FireAllClients(snapshot)
-	end
-
-	return self
-end
-
-function PlayerUnits.moveTo(self: PlayerUnits, target: Vector3)
-	local flyingUnits = TableUtil.Filter(self.units, function(u: Unit)
-		return u.unit.movementMode == "flying"
-	end)
-	local groundUnits = TableUtil.Filter(self.units, function(u: Unit)
-		return u.unit.movementMode ~= "flying"
-	end)
-
-	local flyingFormation = unitRaycast.buildFormation(target, flyingUnits, 0)
-	local groundFormation = unitRaycast.buildFormation(target, groundUnits, 0)
-
-	for i, u in flyingUnits do
-		u:moveTo(flyingFormation[i]):andThen(function()
-			print("[unit] movement action resolved")
-		end)
-	end
-	for i, u in groundUnits do
-		u:moveTo(groundFormation[i]):andThen(function()
-			print("[unit] movement action resolved")
-		end)
-	end
-end
+local TICK_RATE = 1 / 5
+local TARGET_GRID_CELL_SIZE = 32
 
 local Units = {}
 
 function Units.init(self: Units)
+	self.units = {}
+	self.playerUnits = {}
+	self.targetGrid = SpatialGrid.new(TARGET_GRID_CELL_SIZE)
+
+	local unitCallbacks = {
+		onDeath = function(guid: string)
+			local unit = self.units[guid]
+			if not unit then
+				return
+			end
+
+			print(`[unit] destroyed {guid}`)
+			self:destroyUnit(unit.guid)
+		end,
+
+		onDamage = function(guid: string, amount: number)
+			local unit = self.units[guid]
+			if not unit then
+				return
+			end
+
+			print(`[unit] dealt {amount} damage to {guid}`)
+		end,
+	}
+
 	unitRaycast.initRaycastParams()
 
-	self.PlayerUnits = {}
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
-		self.PlayerUnits[plr.Name] = PlayerUnits.new(plr)
+		self.playerUnits[plr.Name] = PlayerUnits.new(plr, unitCallbacks)
+		for _, u in self.playerUnits[plr.Name].units do
+			self.units[u.guid] = u
+		end
+
+		self:replicateUnits(plr)
 	end)
 	network.Units.RequestPath.OnServerEvent:Connect(function(plr: Player, target: Vector3)
-		local plrUnits = self.PlayerUnits[plr.Name]
+		local plrUnits = self.playerUnits[plr.Name]
 		plrUnits:moveTo(target)
 	end)
+	network.Units.ApplyPendingHit.OnServerEvent:Connect(function(plr: Player, guid: string)
+		local u = self.units[guid]
+		if u then
+			u:applyPendingHit()
+		end
+	end)
+
+	for _ = 1, 10 do
+		local unit = constants.getUnit("gunner")
+		assert(unit ~= nil, "unit is nil")
+		local pveUnitGuid = HttpService:GenerateGUID(false)
+		self.units[pveUnitGuid] = Unit.new(
+			nil,
+			unit,
+			CFrame.new(Vector3.new(-38 + (math.random() * 20) - 10, 4.5, -183.5 + ((math.random() * 20) - 10))),
+			pveUnitGuid,
+			unitCallbacks
+		)
+	end
+
+	self:startTick()
 end
 
-type Units = typeof(Units) & { PlayerUnits: { [string]: PlayerUnits } }
+local function closestPointOnCircle(
+	center: Vector3, -- enemy position
+	radius: number, -- max_range in world units
+	point: Vector3 -- your unit's position
+): Vector3
+	local dir = point - center
+
+	-- If the unit is exactly on top of the enemy (degenerate case),
+	-- just pick an arbitrary direction
+	if dir.Magnitude < 0.001 then
+		dir = Vector3.new(1, 0, 0)
+	end
+
+	-- Normalize then scale to radius — that lands you ON the circle
+	return center + dir.Unit * radius
+end
+
+function Units.scanTargets(self: Units)
+	self.targetGrid:rebuild(self.units)
+
+	for _, unit in self.units do
+		local attackRange = unit.unit.range
+		local scanRange = attackRange * 2
+		self.targetGrid:forEachEnemyInRange(unit, scanRange, function(target, distSq)
+			if unit.owner == -1 then
+				return
+			end
+			if unit.targetingPromise and unit.targetingPromise:getStatus() == "Started" then
+				return
+			end
+			if unit.movePromise and unit.movePromise:getStatus() == "Started" then
+				return
+			end
+
+			local dist = math.sqrt(distSq)
+			if dist < attackRange then
+				unit:startTargeting(target)
+			else
+				local closest = closestPointOnCircle(
+					target.pawn.Position,
+					attackRange * math.random(50, 90) * 0.01,
+					unit.pawn.Position
+				)
+				unit:moveTo(closest)
+			end
+
+			-- attack / acquire target / evaluate threat
+		end)
+	end
+end
+
+function Units.startTick(self: Units)
+	local lastTick = os.clock()
+	local conn: RBXScriptConnection
+	conn = RunService.Heartbeat:Connect(function()
+		local elapsed = os.clock() - lastTick
+		if elapsed < TICK_RATE then
+			return
+		end
+		lastTick = os.clock()
+
+		self:scanTargets()
+	end)
+	return conn
+end
+
+function Units.destroyUnit(self: Units, guid: string)
+	for _, u in self.units do
+		if u.guid ~= guid then
+			continue
+		end
+
+		u:cleanup()
+		self.units[u.guid] = nil
+		network.Units.DestroyUnits:FireAllClients({ u.guid })
+		return
+	end
+end
+
+function Units.replicateUnits(self: Units, player: Player)
+	local snapshot: { types.UnitSnapshot } = {}
+	for _, u in self.units do
+		table.insert(snapshot, u:getSnapshot())
+	end
+	network.Units.LoadUnits:FireAllClients(snapshot)
+end
+
+type Units = typeof(Units) & {
+	playerUnits: { [string]: PlayerUnits.PlayerUnits },
+	targetGrid: SpatialGrid.SpatialGrid,
+	units: { [string]: Unit.Unit },
+}
 
 return Units :: Units

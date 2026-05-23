@@ -8,23 +8,36 @@ local unitsById: { [string]: Unit } = {
 	gunner = {
 		name = "Gunner",
 		model = ReplicatedStorage.NPCs.Gunner,
+
+		maxHealth = 30,
+		damage = 1,
+		range = 48,
+
 		speed = 10,
 		scale = 0.6,
 		firerate = 4,
+
 		boundsRadius = 2,
 	},
 	juggernaut = {
 		name = "Juggernaut",
 		model = ReplicatedStorage.NPCs.Juggernaut,
+		maxHealth = 60,
+		damage = 3,
+		range = 48,
 		speed = 6,
 		scale = 0.8,
 		firerate = 5,
+
 		boundsRadius = 3,
 	},
 	abrams = {
 		name = "Abrams Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankAbrams,
+		maxHealth = 10,
+		damage = 1,
+		range = 64,
 		speed = 9,
 		scale = 1.8,
 		firerate = 0.5,
@@ -37,6 +50,9 @@ local unitsById: { [string]: Unit } = {
 		name = "Abrams X Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankX,
+		maxHealth = 10,
+		damage = 1,
+		range = 64,
 		speed = 11,
 		scale = 2,
 		firerate = 0.5,
@@ -49,8 +65,11 @@ local unitsById: { [string]: Unit } = {
 		name = "Tiger I Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankTiger1,
+		maxHealth = 100,
+		damage = 50,
+		range = 64,
 		speed = 7,
-		scale = 1.6,
+		scale = 1.8,
 		firerate = 0.4,
 
 		-- animation params
@@ -61,6 +80,9 @@ local unitsById: { [string]: Unit } = {
 		name = "Abrams Ghost Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankGhost,
+		maxHealth = 10,
+		damage = 1,
+		range = 64,
 		speed = 12,
 		scale = 1.6,
 		firerate = 0.25,
@@ -73,22 +95,26 @@ local unitsById: { [string]: Unit } = {
 		name = "AH-64 Apache",
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.Apache,
+		maxHealth = 200,
+		damage = 1000,
+		range = 96,
 		speed = 12,
-		scale = 1.8,
+		scale = 1.6,
 		firerate = 0.25,
 
 		-- animation params
 		animToBulletDelay = 0,
 		boundsRadius = 8,
-
 		attackOverride = "helicopter_missiles",
-		movementOverride = "helicopter",
 		movementMode = "flying",
 	},
 	littlebird = {
 		name = "MH-6 Little Bird",
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.LittleBird,
+		maxHealth = 10,
+		damage = 1,
+		range = 32,
 		speed = 9,
 		scale = 1.4,
 		firerate = 5,
@@ -96,9 +122,6 @@ local unitsById: { [string]: Unit } = {
 		-- animation params
 		animToBulletDelay = 0,
 		boundsRadius = 4,
-
-		attackOverride = "ground",
-		movementOverride = "helicopter",
 		movementMode = "flying",
 	},
 }

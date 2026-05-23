@@ -2,15 +2,22 @@ local Promise = require("@game/ReplicatedStorage/Packages/Promise")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 
 export type UnitData = {
-	ownerId: string,
-	owner: Player,
+	owner: number,
 	unit: types.Unit,
 	guid: string,
 	model: Model,
 	pawn: Part,
 
+	health: number,
 	pathfinder: Path,
+
 	movePromise: Promise.Class,
+	targetingPromise: Promise.Class,
+	attackPromise: Promise.Class,
+
+	callbacks: { [string]: (string, any) -> () },
+
+	pendingHits: { number },
 }
 
 return {}

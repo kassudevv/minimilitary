@@ -27,7 +27,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 					task.wait(self.unit.animToBulletDelay)
 				end
 
-				local spread = 20
+				local spread = 2
 				local angle = math.random() * math.pi * 2
 				local radius = math.sqrt(math.random()) * spread
 				target += Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
@@ -65,7 +65,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 					bullet.Position = inv * inv * p0 + 2 * inv * v * p1 + v * v * p2
 				end)
 				t:onComplete(function()
-					local vfx = self.unit.type == "tank" and ReplicatedStorage.VFX.MissileImpactBig
+					local vfx = self.unit.type == "tank" and ReplicatedStorage.VFX.MissileImpact
 						or ReplicatedStorage.VFX.BulletImpact
 					local expl = vfx:Clone()
 					expl.CFrame = bullet.CFrame
@@ -112,7 +112,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 			self.attackPromise = Promise.new(function(resolve, reject, onCancel)
 				self:faceTarget(target)
 
-				local spread = 20
+				local spread = 2
 				local angle = math.random() * math.pi * 2
 				local radius = math.sqrt(math.random()) * spread
 				target += Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
@@ -184,7 +184,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 				end)
 
 				t:onComplete(function()
-					local expl = ReplicatedStorage.VFX.MissileImpact:Clone()
+					local expl = ReplicatedStorage.VFX.MissileImpactBig:Clone()
 					expl.CFrame = missile.CFrame
 					expl.Parent = Workspace.Terrain
 
@@ -200,7 +200,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 
 					missile.Transparency = 1
 
-					task.delay(1 / self.unit.firerate * 0.2, function()
+					task.delay(1 / self.unit.firerate * 0.05, function()
 						joint.C1 = CFrame.new(Vector3.new(0, 0, 0))
 
 						missile.Transparency = 0

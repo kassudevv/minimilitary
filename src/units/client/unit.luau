@@ -1,11 +1,9 @@
 local PathfindingService = game:GetService("PathfindingService")
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/Promise")
 local attack = require("./attack")
 local clientTypes = require("./clientTypes")
-local movement = require("./movement")
 local types = require("../shared/types")
 local unitRaycast = require("../shared/unitRaycast")
 
@@ -17,7 +15,7 @@ Unit.__index = Unit
 
 export type Unit = setmetatable<clientTypes.UnitData, typeof(Unit)>
 
-function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFrame): Unit
+function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFrame): Unit
 	local self = setmetatable({} :: clientTypes.UnitData, Unit) :: Unit
 
 	self.guid = guid
@@ -66,7 +64,7 @@ function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFram
 				local startTime = os.clock()
 				conn = RunService.Heartbeat:Connect(function(dt)
 					local elapsed = os.clock() - startTime
-					local distance = math.max(elapsed * self.unit.speed * 1, 0)
+					local distance = math.max(elapsed * self.unit.speed * 10, 0)
 
 					local primaryPart = self.model.PrimaryPart
 					assert(primaryPart ~= nil, "primarypart is nil")
@@ -119,40 +117,42 @@ function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFram
 	return self
 end
 
-function Unit.startTargeting(self: Unit)
+function Unit.startTargeting(self: Unit, target: Unit)
 	if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
 		self.targetingPromise:cancel()
 	end
 	self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
 		local tConn: RBXScriptConnection
-		local elapsed = 0
-		local lastAttack = -100000
+		local startTime = 0
+
 		tConn = RunService.Heartbeat:Connect(function(dt)
-			elapsed += dt
-			if (elapsed - lastAttack) >= (1 / self.unit.firerate) then
-				lastAttack = elapsed
-
-				if self.unit.id == "apache" then
-					lastAttack += 10
-					local p: Promise.Class? = nil
-					for _ = 1, 4 do
-						p = self:attack(
-							self.model:GetPivot().Position
-								- Vector3.new(0, 16, 0)
-								+ self.model:GetPivot().LookVector.Unit * 250
-						)
-						task.wait(0.1)
-					end
-					if p then
-						p:andThen(function()
-							lastAttack = elapsed
-						end)
-					end
-
-					return
-				end
-				self:attack(self.model:GetPivot().Position + self.model:GetPivot().LookVector.Unit * 250)
+			local elapsed = os.clock() - startTime
+			if elapsed < 1 / self.unit.firerate then
+				return
 			end
+			startTime = os.clock()
+			if not target.model.Parent then
+				return resolve()
+			end
+
+			-- if self.unit.id == "apache" then
+			-- 	startTime += 10
+			-- 	local p: Promise.Class? = nil
+			-- 	for _ = 1, 4 do
+			-- 		p = self:attack(target.model:GetPivot().Position)
+			-- 		task.wait(0.1)
+			-- 	end
+			-- 	if p then
+			-- 		p:andThen(function()
+			-- 			startTime = elapsed
+			-- 		end)
+			-- 	end
+
+			-- 	return
+			-- end
+
+			self:attack(target.model:GetPivot().Position):andThen(function() end)
+			-- self:attack(self.model:GetPivot().Position + self.model:GetPivot().LookVector.Unit * 250)
 		end)
 
 		onCancel(function()
@@ -218,7 +218,19 @@ function Unit.stopAnimation(self: Unit, anim: string)
 end
 
 function Unit.destroy(self: Unit)
-	self.model:Destroy()
+	if self.movePromise then
+		self.movePromise:cancel()
+	end
+	if self.attackPromise then
+		self.attackPromise:cancel()
+	end
+	if self.targetingPromise then
+		self.targetingPromise:cancel()
+	end
+
+	if self.model then
+		self.model:Destroy()
+	end
 end
 
 return Unit

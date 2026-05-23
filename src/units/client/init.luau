@@ -27,17 +27,16 @@ function Units.init(self: Units)
 
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
 		for _, snapshot in snapshots do
+			print("[unit.client] Loading unit ", snapshot.unitId, " with owner ", snapshot.owner)
 			local unitDef = constants.getUnit(snapshot.unitId)
 			assert(unitDef ~= nil, "invalid unitDef")
 			local u = Unit.new(unitDef, snapshot.guid, snapshot.owner, snapshot.position)
-
-			table.insert(self.units, u)
-			if snapshot.owner == Players.LocalPlayer then
-				table.insert(self.localUnits, u)
+			self.units[u.guid] = u
+			if snapshot.owner == Players.LocalPlayer.UserId then
+				self.localUnits[u.guid] = u
 			end
 		end
 	end)
-	network.Units.RequestUnits:FireServer()
 	network.Units.MoveUnit.OnClientEvent:Connect(function(guid: string, waypoints: buffer)
 		for _, u in self.units do
 			if u.guid ~= guid then
@@ -45,15 +44,33 @@ function Units.init(self: Units)
 			end
 
 			local result = encoder.decodeWaypoints(waypoints)
-			u:move(result):andThen(function()
-				task.delay(1, function()
-					u:startTargeting()
-				end)
-			end)
+			u:move(result)
 
 			return
 		end
 	end)
+	network.Units.DestroyUnits.OnClientEvent:Connect(function(guids: { string })
+		for _, g in guids do
+			if self.units[g] then
+				self.units[g]:destroy()
+				self.units[g] = nil
+
+				if self.localUnits[g] then
+					self.localUnits[g] = nil
+				end
+			end
+		end
+	end)
+
+	network.Units.StartTargeting.OnClientEvent:Connect(function(guid: string, target: string)
+		local u = self.units[guid]
+		local t = self.units[target]
+		if u and t then
+			u:startTargeting(t)
+		end
+	end)
+
+	network.Units.RequestUnits:FireServer()
 end
 
 function Units.initControls(self: Units)
@@ -76,7 +93,7 @@ function Units.initControls(self: Units)
 						return
 					end
 
-					for _, u in self.units do
+					for _, u in self.localUnits do
 						if result.Instance:IsDescendantOf(u.model) then
 							store.squadControlModeEnabled(true)
 							return
@@ -140,6 +157,8 @@ function Units.initControls(self: Units)
 	end)
 end
 
-type Units = typeof(Units) & { units: { Unit.Unit }, localUnits: { Unit.Unit }, janitor: Janitor.Janitor }
+type Units =
+	typeof(Units)
+	& { units: { [string]: Unit.Unit }, localUnits: { [string]: Unit.Unit }, janitor: Janitor.Janitor }
 
 return Units :: Units

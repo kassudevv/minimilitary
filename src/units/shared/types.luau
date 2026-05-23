@@ -1,6 +1,6 @@
 export type UnitSnapshot = {
 	guid: string,
-	owner: Player,
+	owner: number,
 	unitId: string,
 	position: CFrame,
 }
@@ -8,6 +8,11 @@ export type UnitSnapshot = {
 export type Unit = {
 	id: string?,
 	name: string,
+
+	maxHealth: number,
+	damage: number,
+	range: number,
+
 	model: Model,
 	speed: number,
 	scale: number,
@@ -20,7 +25,6 @@ export type Unit = {
 	type: Type?,
 
 	movementMode: "ground" | "flying" | nil,
-	movementOverride: string?,
 	attackOverride: string?,
 }
 
