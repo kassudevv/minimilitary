@@ -193,7 +193,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3, boolean, string) -> ty
 						network.Units.ApplyPendingHit:FireServer(targetGuid)
 					end
 
-					local expl = ReplicatedStorage.VFX.MissileImpactBig:Clone()
+					local expl = ReplicatedStorage.VFX.MissileImpact:Clone()
 					expl.CFrame = missile.CFrame
 					expl.Parent = Workspace.Terrain
 

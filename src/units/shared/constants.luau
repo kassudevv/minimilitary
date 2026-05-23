@@ -9,8 +9,8 @@ local unitsById: { [string]: Unit } = {
 		name = "Gunner",
 		model = ReplicatedStorage.NPCs.Gunner,
 
-		maxHealth = 50,
-		damage = 1,
+		maxHealth = 12,
+		damage = 6,
 		range = 64,
 		animToBulletDelay = 0.1,
 
@@ -30,7 +30,7 @@ local unitsById: { [string]: Unit } = {
 
 		speed = 10,
 		scale = 1,
-		firerate = 2,
+		firerate = 4,
 
 		boundsRadius = 3,
 	},
@@ -103,7 +103,7 @@ local unitsById: { [string]: Unit } = {
 		range = 72,
 		speed = 14,
 		scale = 1.6,
-		firerate = 1,
+		firerate = 0.25,
 
 		-- animation params
 		animToBulletDelay = 0,
@@ -131,7 +131,7 @@ local unitsById: { [string]: Unit } = {
 
 for _, u in unitsById do
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
-	u.speed = 150
+	u.speed = 50
 end
 
 local function getUnit(itemId: string): Unit?

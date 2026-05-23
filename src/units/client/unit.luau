@@ -119,6 +119,9 @@ function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFram
 
 		task.wait()
 		local ground = self:raycastGround(position.Position)
+		if self.unit.movementMode == "flying" then
+			ground += Vector3.new(0, 16, 0)
+		end
 		if ground then
 			self.model:PivotTo(CFrame.new(ground))
 		end
@@ -139,6 +142,7 @@ function Unit.startTargeting(self: Unit, target: Unit)
 				return
 			end
 			self.lastAttackTs = os.clock()
+
 			if not target.model.Parent then
 				tConn:Disconnect()
 				return resolve()
@@ -210,7 +214,18 @@ function Unit.stopAnimation(self: Unit, anim: string)
 end
 
 function Unit.destroy(self: Unit)
-	-- Debris:AddItem(self.model, 0)
+	if table.find({ "helicopter", "plane", "tank" }, self.unit.type or "") then
+		local expl = ReplicatedStorage.VFX.MissileImpactBig:Clone()
+		expl.CFrame = self.model:GetPivot()
+		expl.Parent = Workspace.Terrain
+		for _, emitter in expl:GetChildren() do
+			if emitter:IsA("ParticleEmitter") then
+				emitter:Emit()
+			end
+		end
+		Debris:AddItem(expl, 3)
+	end
+
 	if self.movePromise then
 		self.movePromise:cancel()
 	end
@@ -221,15 +236,12 @@ function Unit.destroy(self: Unit)
 		self.targetingPromise:cancel()
 	end
 
-	self.model.Parent = ReplicatedStorage
+	self.model.Parent = nil
 
 	task.wait(0)
 	for i, c in self.model:GetChildren() do
 		Debris:AddItem(c, i * 1)
 	end
-	-- if self.model then
-	-- 	self.model:Destroy()
-	-- end
 end
 
 return Unit

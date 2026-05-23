@@ -9,7 +9,7 @@ local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
-local TICK_RATE = 1 / 1
+local TICK_RATE = 1 / 10
 local TARGET_GRID_CELL_SIZE = 32
 
 local Units = {}
@@ -61,27 +61,66 @@ function Units.init(self: Units)
 		end
 	end)
 
-	for _ = 1, 5 do
+	for _ = 1, 100 do
 		local unit = constants.getUnit("gunner")
 		assert(unit ~= nil, "unit is nil")
 		local pveUnitGuid = HttpService:GenerateGUID(false)
 		self.units[pveUnitGuid] = Unit.new(
 			nil,
 			unit,
-			CFrame.new(Vector3.new(-38 + (math.random() * 30) - 15, 4.5, -183.5 + ((math.random() * 30) - 15))),
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
 			pveUnitGuid,
 			unitCallbacks
 		)
 	end
 
 	do
-		local unit = constants.getUnit("juggernaut")
+		local unit = constants.getUnit("gunner")
 		assert(unit ~= nil, "unit is nil")
 		local pveUnitGuid = HttpService:GenerateGUID(false)
 		self.units[pveUnitGuid] = Unit.new(
 			nil,
 			unit,
-			CFrame.new(Vector3.new(-38 + (math.random() * 30) - 15, 4.5, -183.5 + ((math.random() * 30) - 15))),
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
+			pveUnitGuid,
+			unitCallbacks
+		)
+	end
+
+	do
+		local unit = constants.getUnit("apache")
+		assert(unit ~= nil, "unit is nil")
+		local pveUnitGuid = HttpService:GenerateGUID(false)
+		self.units[pveUnitGuid] = Unit.new(
+			nil,
+			unit,
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
+			pveUnitGuid,
+			unitCallbacks
+		)
+	end
+
+	do
+		local unit = constants.getUnit("littlebird")
+		assert(unit ~= nil, "unit is nil")
+		local pveUnitGuid = HttpService:GenerateGUID(false)
+		self.units[pveUnitGuid] = Unit.new(
+			nil,
+			unit,
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
+			pveUnitGuid,
+			unitCallbacks
+		)
+	end
+
+	do
+		local unit = constants.getUnit("abramsx")
+		assert(unit ~= nil, "unit is nil")
+		local pveUnitGuid = HttpService:GenerateGUID(false)
+		self.units[pveUnitGuid] = Unit.new(
+			nil,
+			unit,
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
 			pveUnitGuid,
 			unitCallbacks
 		)
@@ -111,9 +150,6 @@ function Units.scanTargets(self: Units)
 	self.targetGrid:rebuild(self.units)
 
 	for _, unit in self.units do
-		if unit.owner == -1 then
-			continue
-		end
 		if unit.movePromise and unit.movePromise:getStatus() == "Started" then
 			continue
 		end
@@ -122,11 +158,10 @@ function Units.scanTargets(self: Units)
 		end
 
 		local attackRange = unit.unit.range
-		local targetRange = attackRange * 1.3
-		local scanRange = attackRange * 1.4
+		local targetRange = attackRange * 1.4
 
 		local nearest, nearestDist = nil, math.huge
-		self.targetGrid:forEachEnemyInRange(unit, scanRange, function(target, distSq)
+		self.targetGrid:forEachEnemyInRange(unit, targetRange, function(target, distSq)
 			local dist = math.sqrt(distSq)
 
 			if dist < nearestDist then
@@ -145,7 +180,7 @@ function Units.scanTargets(self: Units)
 			if unit.owner ~= -1 then
 				local closest = closestPointOnCircle(
 					nearest.pawn.Position,
-					attackRange * math.random(70, 80) * 0.01,
+					attackRange * math.random(50, 90) * 0.01,
 					unit.pawn.Position
 				)
 				unit:moveTo(closest)
