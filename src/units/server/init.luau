@@ -8,7 +8,7 @@ local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
-local TICK_RATE = 1 / 5
+local TICK_RATE = 1 / 10
 local TARGET_GRID_CELL_SIZE = 32
 
 local Units = {}
@@ -176,7 +176,7 @@ function Units.scanTargets(self: Units)
 		end
 
 		if nearest and nearestDist <= targetRange then
-			if unit.owner ~= "pve" then
+			if unit.owner ~= "pve" and nearest.owner == "pve" then
 				local closest = closestPointOnCircle(
 					nearest.pawn.Position,
 					attackRange * math.random(50, 90) * 0.01,

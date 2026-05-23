@@ -1,0 +1,48 @@
+local StateMachine = {}
+StateMachine.__index = StateMachine
+
+type StateMachineData = {
+	state: "idle" | "moving" | "targeting",
+	data: { [string]: any },
+
+	handlers: { [string]: {
+		onEnter: (string) -> (),
+		onExit: (string) -> (),
+	} },
+}
+
+export type StateMachine = setmetatable<StateMachineData, typeof(StateMachine)>
+
+function StateMachine.new(initial: StateMachineData): StateMachine
+	local self = setmetatable({} :: StateMachineData, StateMachine)
+
+	self.state = initial.state
+	self.data = initial.data
+	self.handlers = initial.handlers
+
+	return self
+end
+
+function StateMachine.tick(self: StateMachine, dt: number) end
+
+function StateMachine.transition(self: StateMachine, newState: "idle" | "moving" | "targeting", data: { [string]: any })
+	local prev = self.state
+
+	-- run exit hook for current state
+	local current = self.handlers[prev]
+	if current and current.onExit then
+		current.onExit(newState)
+	end
+
+	-- apply new state
+	self.state = newState
+	self.data = data
+
+	-- run entry hook for new state
+	local next = self.handlers[newState]
+	if next and next.onEnter then
+		next.onEnter(prev)
+	end
+end
+
+return StateMachine

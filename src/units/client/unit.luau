@@ -55,9 +55,6 @@ function Unit.new(unit: types.Unit, snapshot: types.UnitSnapshot): Unit
 			if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
 				self.targetingPromise:cancel()
 			end
-			if self.attackPromise and self.attackPromise:getStatus() ~= "Cancelled" then
-				self.attackPromise:cancel()
-			end
 			if self.movePromise and self.movePromise:getStatus() ~= "Cancelled" then
 				self.movePromise:cancel()
 			end

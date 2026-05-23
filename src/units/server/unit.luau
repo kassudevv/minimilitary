@@ -93,49 +93,48 @@ function Unit.damage(self: Unit, amount: number)
 end
 
 function Unit.startTargeting(self: Unit, target: Unit)
-	return Promise.new(function(rs)
-		if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
-			self.targetingPromise:cancel()
+	if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
+		self.targetingPromise:cancel()
+	end
+
+	self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
+		local conn: RBXScriptConnection
+		local cancelled = false
+
+		onCancel(function()
+			cancelled = true
+			network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
+			if conn then
+				conn:Disconnect()
+			end
+		end)
+
+		task.wait(math.random() * 0.1)
+
+		if cancelled then
+			return reject()
 		end
 
-		self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
-			local cancelled = false
-			local conn: RBXScriptConnection
+		network.Units.StartTargeting:FireAllClients(index.writeBuf(self.id), index.writeBuf(target.id))
 
-			onCancel(function()
-				cancelled = true
-				network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
-				conn:Disconnect()
-			end)
-
-			task.wait(math.random() * 0.1)
-
-			if cancelled then
+		conn = RunService.Heartbeat:Connect(function(dt)
+			local elapsed = os.clock() - self.lastAttackTs
+			if elapsed < 1 / self.unit.firerate then
 				return
 			end
-
-			network.Units.StartTargeting:FireAllClients(index.writeBuf(self.id), index.writeBuf(target.id))
-			conn = RunService.Heartbeat:Connect(function(dt)
-				local elapsed = os.clock() - self.lastAttackTs
-				if elapsed < 1 / self.unit.firerate then
-					return
-				end
-				if not target.pawn.Parent or target.health <= 0 then
-					network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
-					conn:Disconnect()
-					return resolve()
-				end
-				if (self.pawn.Position - target.pawn.Position).Magnitude > self.unit.range then
-					network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
-					conn:Disconnect()
-					return resolve()
-				end
-
-				self.lastAttackTs = os.clock()
-				target:addPendingDamage(self.unit.damage)
-			end)
+			if not target.pawn.Parent or target.health <= 0 then
+				network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
+				conn:Disconnect()
+				return resolve()
+			end
+			if (self.pawn.Position - target.pawn.Position).Magnitude > self.unit.range then
+				network.Units.StopTargeting:FireAllClients(index.writeBuf(self.id))
+				conn:Disconnect()
+				return resolve()
+			end
+			self.lastAttackTs = os.clock()
+			target:addPendingDamage(self.unit.damage)
 		end)
-		return rs(self.targetingPromise)
 	end)
 end
 
@@ -176,6 +175,11 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 			self.movePromise:cancel()
 		end
 
+		local cancelled = false
+		oc(function()
+			cancelled = true
+		end)
+
 		local wps: { Vector3 } = {}
 		local isFlying = self.unit.movementMode == "flying"
 		-- ground troop
@@ -201,8 +205,13 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 			end
 		end
 
-		local totalLength = unitRaycast.getPathLength(wps)
+		if cancelled then
+			return rj()
+		end
 
+		network.Units.MoveUnit:FireAllClients(index.writeBuf(self.id), encoder.encodeWaypoints(wps))
+
+		local totalLength = unitRaycast.getPathLength(wps)
 		self.movePromise = Promise.new(function(resolve, reject, onCancel)
 			local conn: RBXScriptConnection
 			local startTime = os.clock()
@@ -223,8 +232,6 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 			end)
 		end)
 		rs(self.movePromise)
-
-		network.Units.MoveUnit:FireAllClients(index.writeBuf(self.id), encoder.encodeWaypoints(wps))
 	end)
 end
 

@@ -24,13 +24,13 @@ local unitsById: { [string]: Unit } = {
 		name = "Juggernaut",
 		model = ReplicatedStorage.NPCs.Juggernaut,
 
-		maxHealth = 50,
-		damage = 1,
+		maxHealth = 5000,
+		damage = 12,
 		range = 64,
 
 		speed = 10,
 		scale = 1,
-		firerate = 4,
+		firerate = 16,
 
 		boundsRadius = 3,
 	},

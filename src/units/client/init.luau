@@ -166,6 +166,12 @@ function Units.initControls(self: Units)
 							attackingTask = nil
 						end
 
+						for _, u in self.localUnits do
+							if u.movePromise and u.movePromise:getStatus() ~= "Cancelled" then
+								u.movePromise:cancel()
+							end
+						end
+
 						network.Units.RequestPath:FireServer(result.Position)
 					end))
 				end
