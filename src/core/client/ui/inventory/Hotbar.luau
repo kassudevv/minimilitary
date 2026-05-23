@@ -74,7 +74,11 @@ return function()
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					TextColor3 = Color3.fromHex("#FFFFFF"),
 					Text = function()
-						return `Controlling Squad #1 (x{#units.localUnits})`
+						local amt = 0
+						for _, u in units.localUnits do
+							amt += 1
+						end
+						return `Controlling Squad #1 (x{amt})`
 					end,
 					TextXAlignment = Enum.TextXAlignment.Center,
 				})

@@ -3,9 +3,10 @@ local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/PromiseTyped")
 local Ripple = require("../../../Packages/Ripple")
 local clientTypes = require("./clientTypes")
+local network = require("../../core/shared/network")
 
-local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(function() end)) } = {
-	default = function(self: clientTypes.UnitData, target: Vector3)
+local Attack: { [string]: (clientTypes.UnitData, Vector3, boolean, string) -> typeof(Promise.new(function() end)) } = {
+	default = function(self: clientTypes.UnitData, target: Vector3, isOwner: boolean, targetGuid: string)
 		return Promise.new(function(rs)
 			if self.movePromise and self.movePromise:getStatus() ~= "Cancelled" then
 				self.movePromise:cancel()
@@ -65,6 +66,10 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 					bullet.Position = inv * inv * p0 + 2 * inv * v * p1 + v * v * p2
 				end)
 				t:onComplete(function()
+					if isOwner then
+						network.Units.ApplyPendingHit:FireServer(targetGuid)
+					end
+
 					local vfx = self.unit.type == "tank" and ReplicatedStorage.VFX.MissileImpact
 						or ReplicatedStorage.VFX.BulletImpact
 					local expl = vfx:Clone()
@@ -94,12 +99,12 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 			return rs(self.attackPromise)
 		end)
 	end,
-	helicopter_autocannon = function(self: clientTypes.UnitData, target: Vector3)
+	helicopter_autocannon = function(self: clientTypes.UnitData, target: Vector3, isOwner: boolean, targetGuid: string)
 		return Promise.new(function(rs)
 			rs(print("autocannon not implemented"))
 		end)
 	end,
-	helicopter_missiles = function(self: clientTypes.UnitData, target: Vector3)
+	helicopter_missiles = function(self: clientTypes.UnitData, target: Vector3, isOwner: boolean, targetGuid: string)
 		return Promise.new(function(rs)
 			if self.movePromise and self.movePromise:getStatus() ~= "Cancelled" then
 				self.movePromise:cancel()
@@ -184,6 +189,10 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 				end)
 
 				t:onComplete(function()
+					if isOwner then
+						network.Units.ApplyPendingHit:FireServer(targetGuid)
+					end
+
 					local expl = ReplicatedStorage.VFX.MissileImpactBig:Clone()
 					expl.CFrame = missile.CFrame
 					expl.Parent = Workspace.Terrain

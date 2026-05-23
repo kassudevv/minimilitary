@@ -1,9 +1,13 @@
+local Debris = game:GetService("Debris")
 local PathfindingService = game:GetService("PathfindingService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/Promise")
 local attack = require("./attack")
 local clientTypes = require("./clientTypes")
+local network = require("../../core/shared/network")
 local types = require("../shared/types")
 local unitRaycast = require("../shared/unitRaycast")
 
@@ -64,11 +68,16 @@ function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFram
 				local startTime = os.clock()
 				conn = RunService.Heartbeat:Connect(function(dt)
 					local elapsed = os.clock() - startTime
-					local distance = math.max(elapsed * self.unit.speed * 10, 0)
+					local distance = math.max(elapsed * self.unit.speed, 0)
 
 					local primaryPart = self.model.PrimaryPart
 					assert(primaryPart ~= nil, "primarypart is nil")
-					unitRaycast.setUnitPositionWithOrientationFromSampledPath(self.model :: Model, wps, distance)
+					unitRaycast.setUnitPositionWithOrientationFromSampledPath(
+						self.model :: Model,
+						wps,
+						distance,
+						self.unit.offset
+					)
 
 					if distance >= totalLength then
 						conn:Disconnect()
@@ -90,6 +99,7 @@ function Unit.new(unit: types.Unit, guid: string, owner: number, position: CFram
 	end
 
 	self.attack = self.unit.attackOverride and attack[self.unit.attackOverride] or attack.default
+	self.lastAttackTs = 0
 
 	self.model:ScaleTo(self.unit.scale)
 	self.model.Parent = Workspace.NPCs
@@ -123,36 +133,18 @@ function Unit.startTargeting(self: Unit, target: Unit)
 	end
 	self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
 		local tConn: RBXScriptConnection
-		local startTime = 0
-
 		tConn = RunService.Heartbeat:Connect(function(dt)
-			local elapsed = os.clock() - startTime
+			local elapsed = os.clock() - self.lastAttackTs
 			if elapsed < 1 / self.unit.firerate then
 				return
 			end
-			startTime = os.clock()
+			self.lastAttackTs = os.clock()
 			if not target.model.Parent then
+				tConn:Disconnect()
 				return resolve()
 			end
 
-			-- if self.unit.id == "apache" then
-			-- 	startTime += 10
-			-- 	local p: Promise.Class? = nil
-			-- 	for _ = 1, 4 do
-			-- 		p = self:attack(target.model:GetPivot().Position)
-			-- 		task.wait(0.1)
-			-- 	end
-			-- 	if p then
-			-- 		p:andThen(function()
-			-- 			startTime = elapsed
-			-- 		end)
-			-- 	end
-
-			-- 	return
-			-- end
-
-			self:attack(target.model:GetPivot().Position):andThen(function() end)
-			-- self:attack(self.model:GetPivot().Position + self.model:GetPivot().LookVector.Unit * 250)
+			self:attack(target.model:GetPivot().Position, self.owner == Players.LocalPlayer.UserId, target.guid)
 		end)
 
 		onCancel(function()
@@ -218,6 +210,7 @@ function Unit.stopAnimation(self: Unit, anim: string)
 end
 
 function Unit.destroy(self: Unit)
+	-- Debris:AddItem(self.model, 0)
 	if self.movePromise then
 		self.movePromise:cancel()
 	end
@@ -228,9 +221,15 @@ function Unit.destroy(self: Unit)
 		self.targetingPromise:cancel()
 	end
 
-	if self.model then
-		self.model:Destroy()
+	self.model.Parent = ReplicatedStorage
+
+	task.wait(0)
+	for i, c in self.model:GetChildren() do
+		Debris:AddItem(c, i * 1)
 	end
+	-- if self.model then
+	-- 	self.model:Destroy()
+	-- end
 end
 
 return Unit

@@ -3,12 +3,13 @@ local RunService = game:GetService("RunService")
 local PlayerUnits = require("@self/playerUnits")
 local SpatialGrid = require("@self/spatialGrid")
 local Unit = require("@self/unit")
+local attack = require("@game/ReplicatedStorage/src/units/client/attack")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
-local TICK_RATE = 1 / 5
+local TICK_RATE = 1 / 1
 local TARGET_GRID_CELL_SIZE = 32
 
 local Units = {}
@@ -60,14 +61,27 @@ function Units.init(self: Units)
 		end
 	end)
 
-	for _ = 1, 10 do
+	for _ = 1, 5 do
 		local unit = constants.getUnit("gunner")
 		assert(unit ~= nil, "unit is nil")
 		local pveUnitGuid = HttpService:GenerateGUID(false)
 		self.units[pveUnitGuid] = Unit.new(
 			nil,
 			unit,
-			CFrame.new(Vector3.new(-38 + (math.random() * 20) - 10, 4.5, -183.5 + ((math.random() * 20) - 10))),
+			CFrame.new(Vector3.new(-38 + (math.random() * 30) - 15, 4.5, -183.5 + ((math.random() * 30) - 15))),
+			pveUnitGuid,
+			unitCallbacks
+		)
+	end
+
+	do
+		local unit = constants.getUnit("juggernaut")
+		assert(unit ~= nil, "unit is nil")
+		local pveUnitGuid = HttpService:GenerateGUID(false)
+		self.units[pveUnitGuid] = Unit.new(
+			nil,
+			unit,
+			CFrame.new(Vector3.new(-38 + (math.random() * 30) - 15, 4.5, -183.5 + ((math.random() * 30) - 15))),
 			pveUnitGuid,
 			unitCallbacks
 		)
@@ -97,33 +111,46 @@ function Units.scanTargets(self: Units)
 	self.targetGrid:rebuild(self.units)
 
 	for _, unit in self.units do
-		local attackRange = unit.unit.range
-		local scanRange = attackRange * 2
-		self.targetGrid:forEachEnemyInRange(unit, scanRange, function(target, distSq)
-			if unit.owner == -1 then
-				return
-			end
-			if unit.targetingPromise and unit.targetingPromise:getStatus() == "Started" then
-				return
-			end
-			if unit.movePromise and unit.movePromise:getStatus() == "Started" then
-				return
-			end
+		if unit.owner == -1 then
+			continue
+		end
+		if unit.movePromise and unit.movePromise:getStatus() == "Started" then
+			continue
+		end
+		if unit.targetingPromise and unit.targetingPromise:getStatus() == "Started" then
+			continue
+		end
 
+		local attackRange = unit.unit.range
+		local targetRange = attackRange * 1.3
+		local scanRange = attackRange * 1.4
+
+		local nearest, nearestDist = nil, math.huge
+		self.targetGrid:forEachEnemyInRange(unit, scanRange, function(target, distSq)
 			local dist = math.sqrt(distSq)
-			if dist < attackRange then
-				unit:startTargeting(target)
-			else
+
+			if dist < nearestDist then
+				nearest = target
+				nearestDist = dist
+				return
+			end
+		end)
+
+		if nearest and nearestDist <= attackRange then
+			unit:startTargeting(nearest)
+			continue
+		end
+
+		if nearest and nearestDist <= targetRange then
+			if unit.owner ~= -1 then
 				local closest = closestPointOnCircle(
-					target.pawn.Position,
-					attackRange * math.random(50, 90) * 0.01,
+					nearest.pawn.Position,
+					attackRange * math.random(70, 80) * 0.01,
 					unit.pawn.Position
 				)
 				unit:moveTo(closest)
 			end
-
-			-- attack / acquire target / evaluate threat
-		end)
+		end
 	end
 end
 

@@ -40,6 +40,7 @@ function Unit.new(
 	self.pawn.Parent = Workspace.Camera
 
 	self.callbacks = unitCallbacks
+	self.lastAttackTs = 0
 
 	self.pathfinder = PathfindingService:CreatePath({
 		AgentRadius = 1,
@@ -99,26 +100,40 @@ function Unit.startTargeting(self: Unit, target: Unit)
 		end
 
 		self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
-			network.Units.StartTargeting:FireAllClients(self.guid, target.guid)
-
+			local cancelled = false
 			local conn: RBXScriptConnection
-			local startTime = os.clock()
-			conn = RunService.Heartbeat:Connect(function(dt)
-				if target.health <= 0 then
-					resolve()
-				end
 
-				local elapsed = os.clock() - startTime
+			onCancel(function()
+				cancelled = true
+				network.Units.StopTargeting:FireAllClients(self.guid)
+				conn:Disconnect()
+			end)
+
+			task.wait(math.random() * 0.1)
+
+			if cancelled then
+				return
+			end
+
+			network.Units.StartTargeting:FireAllClients(self.guid, target.guid)
+			conn = RunService.Heartbeat:Connect(function(dt)
+				local elapsed = os.clock() - self.lastAttackTs
 				if elapsed < 1 / self.unit.firerate then
 					return
 				end
-				startTime = os.clock()
+				if not target.pawn.Parent or target.health <= 0 then
+					network.Units.StopTargeting:FireAllClients(self.guid)
+					conn:Disconnect()
+					return resolve()
+				end
+				if (self.pawn.Position - target.pawn.Position).Magnitude > self.unit.range then
+					network.Units.StopTargeting:FireAllClients(self.guid)
+					conn:Disconnect()
+					return resolve()
+				end
 
+				self.lastAttackTs = os.clock()
 				target:addPendingDamage(self.unit.damage)
-			end)
-
-			onCancel(function()
-				conn:Disconnect()
 			end)
 		end)
 		return rs(self.targetingPromise)
@@ -143,8 +158,6 @@ function Unit.attack(self: Unit, target: Vector3): Promise.Class
 					return
 				end
 				startTime = elapsed
-
-				print("do attack")
 			end)
 
 			onCancel(function()
@@ -156,7 +169,7 @@ function Unit.attack(self: Unit, target: Vector3): Promise.Class
 end
 
 function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
-	return Promise.new(function(rs, rj)
+	return Promise.new(function(rs, rj, oc)
 		if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
 			self.targetingPromise:cancel()
 		end
@@ -196,7 +209,7 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 			local startTime = os.clock()
 			conn = RunService.Heartbeat:Connect(function(dt)
 				local elapsed = os.clock() - startTime
-				local distance = math.max(elapsed * self.unit.speed * 10, 0)
+				local distance = math.max(elapsed * self.unit.speed, 0)
 
 				unitRaycast.setUnitPositionWithOrientationFromSampledPath(self.pawn, wps, distance, self.unit.offset)
 
@@ -210,7 +223,6 @@ function Unit.moveTo(self: Unit, target: Vector3): Promise.Class
 				conn:Disconnect()
 			end)
 		end)
-
 		rs(self.movePromise)
 
 		network.Units.MoveUnit:FireAllClients(self.guid, encoder.encodeWaypoints(wps))

@@ -69,6 +69,14 @@ function Units.init(self: Units)
 			u:startTargeting(t)
 		end
 	end)
+	network.Units.StopTargeting.OnClientEvent:Connect(function(guid: string)
+		local u = self.units[guid]
+		if u then
+			if u.targetingPromise and u.targetingPromise:getStatus() ~= "Cancelled" then
+				u.targetingPromise:cancel()
+			end
+		end
+	end)
 
 	network.Units.RequestUnits:FireServer()
 end

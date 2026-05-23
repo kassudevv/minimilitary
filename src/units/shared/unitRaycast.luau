@@ -227,7 +227,8 @@ local function samplePath(waypoints: { Vector3 }, distance: number): (Vector3, V
 	return last, dir.Magnitude > 0.001 and dir.Unit or nil
 end
 
-local function calculateGroundOffset(model: Model): number
+local function calculateGroundOffset(model: Model, scale: number): number
+	model:ScaleTo(scale)
 	local pivot = model:GetPivot()
 	local boxCFrame, boxSize = model:GetBoundingBox()
 

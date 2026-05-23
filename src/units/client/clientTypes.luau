@@ -4,7 +4,7 @@ local types = require("../shared/types")
 export type UnitData = {
 	move: (UnitData, { Vector3 }) -> Promise.Class,
 	moveTo: (UnitData, Vector3) -> typeof(Promise.new(function() end)),
-	attack: (UnitData, Vector3) -> typeof(Promise.new(function() end)),
+	attack: (UnitData, Vector3, boolean, string) -> typeof(Promise.new(function() end)),
 	playAnimation: (UnitData, string) -> (),
 	stopAnimation: (UnitData, string) -> (),
 	raycastGround: (UnitData, Vector3) -> Vector3,
@@ -25,6 +25,7 @@ export type UnitData = {
 	movePromise: typeof(Promise.new(function() end)),
 	attackPromise: typeof(Promise.new(function() end)),
 	targetingPromise: typeof(Promise.new(function() end)),
+	lastAttackTs: number,
 
 	cache: { [string]: any },
 }

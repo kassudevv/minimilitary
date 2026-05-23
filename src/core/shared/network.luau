@@ -27,6 +27,8 @@ return {
 		MoveUnit = RE("MoveUnit") :: RE<string, any>, -- replicate unit moveTo waypoints
 
 		StartTargeting = RE("StartTargeting") :: RE<string, string>, -- replicates targeting for clients
+		StopTargeting = RE("StopTargeting") :: RE<string>, -- replicates targeting for clients
+
 		ApplyPendingHit = RE("ApplyPendingHit") :: RE<string>,
 	},
 

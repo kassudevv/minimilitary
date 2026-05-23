@@ -14,6 +14,7 @@ export type UnitData = {
 	movePromise: Promise.Class,
 	targetingPromise: Promise.Class,
 	attackPromise: Promise.Class,
+	lastAttackTs: number,
 
 	callbacks: { [string]: (string, any) -> () },
 
