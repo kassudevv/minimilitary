@@ -17,6 +17,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 
 			self.attackPromise = Promise.new(function(resolve, reject, onCancel)
 				self:faceTarget(target)
+				self:playAnimation("Shoot")
 
 				task.delay(1 / self.unit.firerate + 0.1, function()
 					resolve()
@@ -64,7 +65,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 					bullet.Position = inv * inv * p0 + 2 * inv * v * p1 + v * v * p2
 				end)
 				t:onComplete(function()
-					local vfx = self.unit.type == "tank" and ReplicatedStorage.VFX.MissileImpact
+					local vfx = self.unit.type == "tank" and ReplicatedStorage.VFX.MissileImpactBig
 						or ReplicatedStorage.VFX.BulletImpact
 					local expl = vfx:Clone()
 					expl.CFrame = bullet.CFrame
@@ -86,9 +87,11 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 				end)
 			end)
 				:andThen(function() end)
-				:finally(function() end)
+				:finally(function()
+					self:stopAnimation("Shoot")
+				end)
 
-			return rs(self.movePromise)
+			return rs(self.attackPromise)
 		end)
 	end,
 	helicopter_autocannon = function(self: clientTypes.UnitData, target: Vector3)
@@ -108,10 +111,6 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 
 			self.attackPromise = Promise.new(function(resolve, reject, onCancel)
 				self:faceTarget(target)
-
-				task.delay(1 / self.unit.firerate + 0.1, function()
-					resolve()
-				end)
 
 				local spread = 20
 				local angle = math.random() * math.pi * 2
@@ -159,7 +158,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 				local arcHeight = math.max((p0 - p2).Magnitude * 0.05, 20)
 				local p1 = mid + Vector3.new(0, arcHeight, 0)
 
-				local duration = (p2 - p0).Magnitude / 50
+				local duration = (p2 - p0).Magnitude / 100
 
 				local t: Ripple.Tween<number> = Ripple.createTween(
 					0,
@@ -206,6 +205,8 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 
 						missile.Transparency = 0
 						missile.Parent = self.model
+
+						resolve()
 					end)
 				end)
 			end)
@@ -214,7 +215,7 @@ local Attack: { [string]: (clientTypes.UnitData, Vector3) -> typeof(Promise.new(
 					self:stopAnimation("Shoot")
 				end)
 
-			return rs(self.movePromise)
+			return rs(self.attackPromise)
 		end)
 	end,
 }

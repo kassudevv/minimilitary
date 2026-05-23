@@ -215,10 +215,6 @@ function Plots.init(self: Plots)
 		m:PivotTo(posInWorld)
 		m.Parent = Workspace
 
-		-- checkCollision(posInWorld, data, m:GetBoundingBox().Y)
-
-		print()
-
 		return true
 	end
 

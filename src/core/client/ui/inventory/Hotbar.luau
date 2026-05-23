@@ -10,26 +10,6 @@ local units = require("../../../../units/client")
 local create = Vide.create
 
 return function()
-	-- return create("Frame")({
-
-	-- 	AnchorPoint = Vector2.new(0.5, 0.5),
-	-- 	Position = UDim2.fromScale(0.5, 0.5),
-	-- 	Size = UDim2.fromScale(1, 1),
-	-- 	BackgroundTransparency = 1,
-	-- 	create("TextLabel")({
-	-- 		Text = function()
-	-- 			local itemCount = 0
-	-- 			for _, v in account().items do
-	-- 				itemCount += v.amount
-	-- 			end
-	-- 			return `CASH: {account().gold}`
-	-- 		end,
-	-- 		TextSize = 64,
-	-- 		AnchorPoint = Vector2.new(0.5, 0.5),
-	-- 		Position = UDim2.fromScale(0.5, 0.5),
-	-- 	}),
-	-- })
-
 	local account = VideCharm.useSignalState(accountStore.getAccount)
 	local x = VideCharm.useAtom(unitStore.squadControlModeEnabled)
 
@@ -94,7 +74,7 @@ return function()
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					TextColor3 = Color3.fromHex("#FFFFFF"),
 					Text = function()
-						return `Controlling Squad #1 (x{#units.units})`
+						return `Controlling Squad #1 (x{#units.localUnits})`
 					end,
 					TextXAlignment = Enum.TextXAlignment.Center,
 				})

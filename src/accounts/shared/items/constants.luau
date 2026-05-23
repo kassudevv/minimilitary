@@ -35,7 +35,7 @@ local itemsById: { [string]: ItemInfo } = {
 		name = "Academy I",
 		type = "Building",
 		data = {
-			size = Vector2.new(16, 16),
+			size = Vector2.new(16, 8),
 			model = ReplicatedStorage.Buildings.barracks1,
 		} :: ItemBuildingData,
 	},

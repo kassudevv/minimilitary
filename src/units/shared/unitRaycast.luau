@@ -75,6 +75,16 @@ local function initRaycastParams()
 		addIgnored(npc)
 	end
 
+	for _, p in Workspace.Camera:GetChildren() do
+		addIgnored(p)
+	end
+	Workspace.Camera.ChildAdded:Connect(function(npc)
+		addIgnored(npc)
+	end)
+	Workspace.Camera.ChildRemoved:Connect(function(npc)
+		removeIgnored(npc)
+	end)
+
 	npcs.ChildAdded:Connect(function(npc)
 		addIgnored(npc)
 	end)
@@ -171,8 +181,99 @@ function buildFormation(center: Vector3, units: { any }, padding: number): { Vec
 	return positions
 end
 
+local function getPathLength(waypoints: { Vector3 }): number
+	local total = 0
+
+	for i = 2, #waypoints do
+		total += (waypoints[i] - waypoints[i - 1]).Magnitude
+	end
+
+	return total
+end
+
+local function samplePath(waypoints: { Vector3 }, distance: number): (Vector3, Vector3?)
+	if #waypoints == 0 then
+		return Vector3.zero, nil
+	end
+
+	if #waypoints == 1 then
+		return waypoints[1], nil
+	end
+
+	local remaining = distance
+
+	for i = 2, #waypoints do
+		local a = waypoints[i - 1]
+		local b = waypoints[i]
+		local segment = b - a
+		local length = segment.Magnitude
+
+		if length <= 0.001 then
+			continue
+		end
+
+		if remaining <= length then
+			local alpha = remaining / length
+			return a:Lerp(b, alpha), segment.Unit
+		end
+
+		remaining -= length
+	end
+
+	local last = waypoints[#waypoints]
+	local prev = waypoints[#waypoints - 1]
+	local dir = last - prev
+
+	return last, dir.Magnitude > 0.001 and dir.Unit or nil
+end
+
+local function calculateGroundOffset(model: Model): number
+	local pivot = model:GetPivot()
+	local boxCFrame, boxSize = model:GetBoundingBox()
+
+	local bottomY = boxCFrame.Position.Y - boxSize.Y / 2
+	local pivotY = pivot.Position.Y
+
+	return pivotY - bottomY
+end
+
+local function setUnitPositionWithOrientationFromSampledPath(
+	pawn: BasePart | Model,
+	waypoints: { Vector3 },
+	distance: number,
+	pOffset: number?
+)
+	local offset: number = pOffset or 1.7
+	local pos = samplePath(waypoints, distance)
+
+	local pawnPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
+	local nextPos = samplePath(waypoints, (distance + 0.05))
+	local dir2 = nextPos - pos
+
+	if dir2.Magnitude > 0 then
+		local dir3 = Vector3.new(dir2.X, 0, dir2.Z).Unit
+
+		if pawn:IsA("Model") then
+			pawn:PivotTo(CFrame.lookAt(pawnPos, pawnPos + dir3))
+		else
+			pawn.CFrame = CFrame.lookAt(pawnPos, pawnPos + dir3)
+		end
+	else
+		if pawn:IsA("Model") and pawn.PrimaryPart then
+			local rot = pawn.PrimaryPart.CFrame.Rotation
+			pawn:PivotTo(CFrame.new(pawnPos) * rot)
+		else
+			pawn.Position = pawnPos
+		end
+	end
+end
+
 return {
 	initRaycastParams = initRaycastParams,
 	getRaycastParams = getRaycastParams,
 	buildFormation = buildFormation,
+	getPathLength = getPathLength,
+	samplePath = samplePath,
+	setUnitPositionWithOrientationFromSampledPath = setUnitPositionWithOrientationFromSampledPath,
+	calculateGroundOffset = calculateGroundOffset,
 }

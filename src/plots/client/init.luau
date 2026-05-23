@@ -7,7 +7,13 @@ local types = require("@game/ReplicatedStorage/src/plots/shared/types")
 local Plot = {}
 Plot.__index = Plot
 
-type PlotData = { snapshot: types.PlotSnapshot, tileGrid: grid.Grid, buildGrid: grid.Grid, area: area.Area }
+type PlotData = {
+	snapshot: types.PlotSnapshot,
+	tileGrid: grid.Grid,
+	buildGrid: grid.Grid,
+	buildSnapGrid: grid.Grid,
+	area: area.Area,
+}
 
 export type Plot = setmetatable<PlotData, typeof(Plot)>
 
@@ -17,8 +23,11 @@ function Plot.new(snapshot: types.PlotSnapshot): Plot
 	self.snapshot = snapshot
 
 	local gridStart = self.snapshot.template:WaitForChild("StartGrid") :: BasePart
+
 	self.buildGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_BUILD_SIZE)
+	self.buildSnapGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_BUILD_SNAP_SIZE)
 	self.tileGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_TILE_SIZE)
+
 	self.area = area.new()
 	self.area:setLocked(snapshot.area)
 

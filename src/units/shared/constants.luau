@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local types = require("./types")
+local unitRaycast = require("./unitRaycast")
 type Unit = types.Unit
 type Type = types.Type
 
@@ -10,7 +11,6 @@ local unitsById: { [string]: Unit } = {
 		speed = 10,
 		scale = 0.6,
 		firerate = 4,
-		groundOffset = 3,
 		boundsRadius = 2,
 	},
 	juggernaut = {
@@ -19,7 +19,6 @@ local unitsById: { [string]: Unit } = {
 		speed = 6,
 		scale = 0.8,
 		firerate = 5,
-		groundOffset = 3,
 		boundsRadius = 3,
 	},
 	abrams = {
@@ -27,9 +26,8 @@ local unitsById: { [string]: Unit } = {
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankAbrams,
 		speed = 9,
-		scale = 2,
+		scale = 1.8,
 		firerate = 0.5,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0.3555,
@@ -40,9 +38,8 @@ local unitsById: { [string]: Unit } = {
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankX,
 		speed = 11,
-		scale = 1.6,
+		scale = 2,
 		firerate = 0.5,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0.3555,
@@ -53,9 +50,8 @@ local unitsById: { [string]: Unit } = {
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankTiger1,
 		speed = 7,
-		scale = 1.8,
+		scale = 1.6,
 		firerate = 0.4,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0.3555,
@@ -66,9 +62,8 @@ local unitsById: { [string]: Unit } = {
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankGhost,
 		speed = 12,
-		scale = 1.5,
+		scale = 1.6,
 		firerate = 0.25,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0.3555,
@@ -79,9 +74,8 @@ local unitsById: { [string]: Unit } = {
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.Apache,
 		speed = 12,
-		scale = 1.3,
+		scale = 1.8,
 		firerate = 0.25,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0,
@@ -89,27 +83,35 @@ local unitsById: { [string]: Unit } = {
 
 		attackOverride = "helicopter_missiles",
 		movementOverride = "helicopter",
+		movementMode = "flying",
 	},
 	littlebird = {
 		name = "MH-6 Little Bird",
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.LittleBird,
 		speed = 9,
-		scale = 1.3,
+		scale = 1.4,
 		firerate = 5,
-		groundOffset = 1,
 
 		-- animation params
 		animToBulletDelay = 0,
-		boundsRadius = 8,
+		boundsRadius = 4,
 
 		attackOverride = "ground",
 		movementOverride = "helicopter",
+		movementMode = "flying",
 	},
 }
 
-local function getUnit(itemId: string): Unit
+for _, u in unitsById do
+	u.offset = unitRaycast.calculateGroundOffset(u.model)
+end
+
+local function getUnit(itemId: string): Unit?
 	local u = unitsById[itemId]
+	if not u then
+		return nil
+	end
 	u.id = itemId
 	return u
 end

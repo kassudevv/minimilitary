@@ -13,6 +13,25 @@ local unitRaycast = require("../../units/shared/unitRaycast")
 local units = require("../../units/client")
 local Building = {}
 
+local paramsCache: RaycastParams? = nil
+local getRaycastParams = function(): RaycastParams
+	if paramsCache ~= nil then
+		return paramsCache :: RaycastParams
+	end
+
+	local nParams = RaycastParams.new()
+	nParams.FilterType = Enum.RaycastFilterType.Include
+
+	local plate = plots.plot.snapshot.template:WaitForChild("BuildPlate")
+	if plate then
+		nParams.FilterDescendantsInstances = { plate }
+		print("found")
+	end
+
+	paramsCache = nParams
+	return nParams
+end
+
 function Building.init(self: Building)
 	self.janitor = Janitor.new()
 
@@ -47,21 +66,18 @@ function Building.init(self: Building)
 				previewProp:PivotTo(value)
 			end))
 
-			local lastTick = 0
 			self.janitor:Add(RunService.Heartbeat:Connect(function()
-				if os.clock() - lastTick > 1 / 3 then
-					lastTick = os.clock()
-				end
-
-				local params = unitRaycast.getRaycastParams()
+				local params = getRaycastParams()
 				local mLoc = UserInputService:GetMouseLocation()
 				local ray = Workspace.Camera:ViewportPointToRay(mLoc.X, mLoc.Y)
 				local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
 
 				if result then
 					local hit = result.Position
-					local col, row = plot.buildGrid:worldToLocal(hit)
-					local snapped = plot.buildGrid:localToWorld(col, row)
+
+					local snapCol, snapRow = plot.buildSnapGrid:worldToLocal(hit)
+					local snapped = plot.buildSnapGrid:localToWorld(snapCol, snapRow)
+					local col, row = plot.buildGrid:worldToLocal(snapped.Position)
 					local isValidPlacement = plot:isValidPlacement(col, row, data.size)
 
 					previewTarget:setGoal(
@@ -84,7 +100,7 @@ function Building.init(self: Building)
 
 				if input.UserInputType == Enum.UserInputType.MouseButton1 then
 					-- rot += 90
-					local params = unitRaycast.getRaycastParams()
+					local params = getRaycastParams()
 					local mLoc = UserInputService:GetMouseLocation()
 					local ray = Workspace.Camera:ViewportPointToRay(mLoc.X, mLoc.Y)
 					local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
@@ -93,13 +109,15 @@ function Building.init(self: Building)
 						return
 					end
 					local hit = result.Position
-					local col, row = plot.buildGrid:worldToLocal(hit)
-					local isValidPlacement = plot:isValidPlacement(col, row, data.size)
-					if not isValidPlacement then
-						return
-					end
 
-					network.Plots.PlaceBuilding:InvokeServer("academy1", col, row)
+					local snapCol, snapRow = plot.buildSnapGrid:worldToLocal(hit)
+					local snapped = plot.buildSnapGrid:localToWorld(snapCol, snapRow)
+					local col, row = plot.buildGrid:worldToLocal(snapped.Position)
+					local isValidPlacement = plot:isValidPlacement(col, row, data.size)
+
+					if isValidPlacement then
+						network.Plots.PlaceBuilding:InvokeServer("academy1", col, row)
+					end
 				end
 			end))
 		end

@@ -20,6 +20,7 @@ local Units = {}
 
 function Units.init(self: Units)
 	self.units = {}
+	self.localUnits = {}
 
 	unitRaycast.initRaycastParams()
 	self:initControls()
@@ -28,8 +29,12 @@ function Units.init(self: Units)
 		for _, snapshot in snapshots do
 			local unitDef = constants.getUnit(snapshot.unitId)
 			assert(unitDef ~= nil, "invalid unitDef")
+			local u = Unit.new(unitDef, snapshot.guid, snapshot.owner, snapshot.position)
 
-			table.insert(self.units, Unit.new(unitDef, snapshot.guid, snapshot.owner, snapshot.position))
+			table.insert(self.units, u)
+			if snapshot.owner == Players.LocalPlayer then
+				table.insert(self.localUnits, u)
+			end
 		end
 	end)
 	network.Units.RequestUnits:FireServer()
@@ -40,28 +45,15 @@ function Units.init(self: Units)
 			end
 
 			local result = encoder.decodeWaypoints(waypoints)
-			u:moveTo()
+			u:move(result):andThen(function()
+				task.delay(1, function()
+					u:startTargeting()
+				end)
+			end)
 
 			return
 		end
 	end)
-
-	-- local unitDef = {
-	-- 	-- constants.getUnit("gunner"),
-	-- 	-- constants.getUnit("abramsx"),
-	-- 	-- constants.getUnit("juggernaut"),
-	-- 	constants.getUnit("apache"),
-	-- 	-- constants.getUnit("littlebird"),
-	-- 	-- constants.getUnit("tiger"),
-	-- }
-
-	-- local c = Players.LocalPlayer.Character :: Model
-	-- local p = c.PrimaryPart :: BasePart
-	-- local s = p.CFrame
-
-	-- for i = 1, 2 do
-	-- 	table.insert(self.units, Unit.new(unitDef[(i % #unitDef) + 1], s))
-	-- end
 end
 
 function Units.initControls(self: Units)
@@ -100,7 +92,7 @@ function Units.initControls(self: Units)
 	Charm.effect(function()
 		local enabled = store.squadControlModeEnabled()
 		if not enabled then
-			for _, u in self.units do
+			for _, u in self.localUnits do
 				local hl = u.model:FindFirstChild("TroopHighlight") :: Highlight
 				if hl then
 					hl.Enabled = false
@@ -111,7 +103,7 @@ function Units.initControls(self: Units)
 		end
 
 		if enabled then
-			for _, u in self.units do
+			for _, u in self.localUnits do
 				local hl = u.model:FindFirstChild("TroopHighlight") :: Highlight
 				if not hl then
 					hl = ReplicatedStorage.VFX.TroopHighlight:Clone()
@@ -141,17 +133,6 @@ function Units.initControls(self: Units)
 						end
 
 						network.Units.RequestPath:FireServer(result.Position)
-
-						-- local formation = unitRaycast.buildFormation(result.Position, self.units, 0)
-						-- for i, u in self.units do
-						-- 	u:moveTo(formation[i]):andThen(function(msg)
-						-- 		print("[UNIT] MoveTo promise resolved")
-
-						-- 		u:attack(result.Position + u.model:GetPivot().LookVector.Unit * 100):andThen(function()
-						-- 			print("attack complete")
-						-- 		end)
-						-- 	end)
-						-- end
 					end))
 				end
 			end))
@@ -159,6 +140,6 @@ function Units.initControls(self: Units)
 	end)
 end
 
-type Units = typeof(Units) & { units: { Unit.Unit }, janitor: Janitor.Janitor }
+type Units = typeof(Units) & { units: { Unit.Unit }, localUnits: { Unit.Unit }, janitor: Janitor.Janitor }
 
 return Units :: Units

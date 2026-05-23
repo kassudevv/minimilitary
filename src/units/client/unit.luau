@@ -1,5 +1,8 @@
 local PathfindingService = game:GetService("PathfindingService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local Promise = require("../../../Packages/Promise")
 local attack = require("./attack")
 local clientTypes = require("./clientTypes")
 local movement = require("./movement")
@@ -24,6 +27,7 @@ function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFram
 	self.loadedAnims = {}
 	self.loadedTracks = {}
 	self.cache = {}
+	self.isMoving = false
 
 	self.pathfinder = PathfindingService:CreatePath({
 		AgentRadius = 0.5,
@@ -33,13 +37,60 @@ function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFram
 	})
 
 	self.model = unit.model:Clone() :: Model
+
 	local humanoid = self.model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	humanoid.EvaluateStateMachine = false
 	humanoid.AutoRotate = false
 	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
 	self.animator = humanoid:WaitForChild("Animator") :: Animator
-	self.moveTo = self.unit.movementOverride and movement[self.unit.movementOverride] or movement.default
+
+	self.move = function(unitData: clientTypes.UnitData, wps: { Vector3 }): Promise.Class
+		return Promise.new(function(rs)
+			if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
+				self.targetingPromise:cancel()
+			end
+			if self.attackPromise and self.attackPromise:getStatus() ~= "Cancelled" then
+				self.attackPromise:cancel()
+			end
+			if self.movePromise and self.movePromise:getStatus() ~= "Cancelled" then
+				self.movePromise:cancel()
+			end
+
+			local totalLength = unitRaycast.getPathLength(wps)
+
+			self.movePromise = Promise.new(function(resolve, reject, onCancel)
+				self:playAnimation("RunAnim")
+
+				local conn: RBXScriptConnection
+				local startTime = os.clock()
+				conn = RunService.Heartbeat:Connect(function(dt)
+					local elapsed = os.clock() - startTime
+					local distance = math.max(elapsed * self.unit.speed * 1, 0)
+
+					local primaryPart = self.model.PrimaryPart
+					assert(primaryPart ~= nil, "primarypart is nil")
+					unitRaycast.setUnitPositionWithOrientationFromSampledPath(self.model :: Model, wps, distance)
+
+					if distance >= totalLength then
+						conn:Disconnect()
+						resolve()
+					end
+				end)
+
+				onCancel(function()
+					conn:Disconnect()
+				end)
+			end)
+				:andThen(function() end)
+				:finally(function()
+					self:stopAnimation("RunAnim")
+				end)
+
+			return rs(self.movePromise)
+		end)
+	end
+
 	self.attack = self.unit.attackOverride and attack[self.unit.attackOverride] or attack.default
 
 	self.model:ScaleTo(self.unit.scale)
@@ -66,6 +117,48 @@ function Unit.new(unit: types.Unit, guid: string, owner: Player, position: CFram
 	end)
 
 	return self
+end
+
+function Unit.startTargeting(self: Unit)
+	if self.targetingPromise and self.targetingPromise:getStatus() ~= "Cancelled" then
+		self.targetingPromise:cancel()
+	end
+	self.targetingPromise = Promise.new(function(resolve, reject, onCancel)
+		local tConn: RBXScriptConnection
+		local elapsed = 0
+		local lastAttack = -100000
+		tConn = RunService.Heartbeat:Connect(function(dt)
+			elapsed += dt
+			if (elapsed - lastAttack) >= (1 / self.unit.firerate) then
+				lastAttack = elapsed
+
+				if self.unit.id == "apache" then
+					lastAttack += 10
+					local p: Promise.Class? = nil
+					for _ = 1, 4 do
+						p = self:attack(
+							self.model:GetPivot().Position
+								- Vector3.new(0, 16, 0)
+								+ self.model:GetPivot().LookVector.Unit * 250
+						)
+						task.wait(0.1)
+					end
+					if p then
+						p:andThen(function()
+							lastAttack = elapsed
+						end)
+					end
+
+					return
+				end
+				self:attack(self.model:GetPivot().Position + self.model:GetPivot().LookVector.Unit * 250)
+			end
+		end)
+
+		onCancel(function()
+			tConn:Disconnect()
+		end)
+	end)
 end
 
 function Unit.faceTarget(self: Unit, target: Vector3)
@@ -98,8 +191,9 @@ function Unit.raycastGround(self: Unit, origin: Vector3): Vector3
 	local size = self.cache["boundingBox"]
 	local offset = size.Y / 2
 
-	local rayResult = workspace:Raycast(origin, -Vector3.yAxis * 50, params)
+	local rayResult = workspace:Raycast(origin, -Vector3.yAxis * 1000, params)
 	if not rayResult then
+		print("No ray result")
 		return origin
 	end
 	return Vector3.new(origin.X, rayResult.Position.Y + offset, origin.Z)

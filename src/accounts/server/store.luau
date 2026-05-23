@@ -21,7 +21,7 @@ local function onAccountChanged(key: string, account: Account)
 end
 
 return Lyra.createPlayerStore({
-	name = "PlayerData",
+	name = "PRE2_",
 	template = types.accountTemplate,
 	schema = function(value)
 		local ok, reason = schema:matches(value)

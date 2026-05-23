@@ -7,6 +7,7 @@ local types = require("@game/ReplicatedStorage/src/accounts/shared/types")
 type Account = types.Account
 type Item = items.Item
 type AccountPlotBuilding = types.AccountPlotBuilding
+type AccountUnit = types.AccountUnit
 
 local function sellItem(player: Player, guid: string)
 	return store:updateImmutable(player, function(account: Account)
@@ -97,6 +98,43 @@ local function setBuildingMeta(player: Player, guid: string, key: string, value:
 	end)
 end
 
+local function addUnit(player: Player, unit: AccountUnit)
+	local id = HttpService:GenerateGUID(false)
+	return store:updateImmutable(player, function(account: Account)
+		return objects.join(account, {
+			units = objects.set(account.units, id, unit),
+		})
+	end),
+		id
+end
+
+local function removeUnit(player: Player, guid: string)
+	return store:updateImmutable(player, function(account: Account)
+		return objects.join(account, {
+			units = objects.delete(account.units, guid),
+		})
+	end)
+end
+
+local function setUnitSquad(player: Player, guid: string, assignedSquad: number)
+	return store:updateImmutable(player, function(account: Account)
+		local unit = account.units[guid]
+		if not unit then
+			return false
+		end
+
+		return objects.join(account, {
+			units = objects.set(
+				account.units,
+				guid,
+				objects.join(unit, {
+					assignedSquad = assignedSquad,
+				})
+			),
+		})
+	end)
+end
+
 return {
 	sellItem = sellItem,
 	addItem = addItem,
@@ -104,4 +142,7 @@ return {
 	addBuilding = addBuilding,
 	removeBuilding = removeBuilding,
 	setBuildingMeta = setBuildingMeta,
+	addUnit = addUnit,
+	removeUnit = removeUnit,
+	setUnitSquad = setUnitSquad,
 }

@@ -14,11 +14,12 @@ export type Unit = {
 	firerate: number,
 
 	animToBulletDelay: number?,
+	offset: number?,
 	boundsRadius: number,
 
-	methodOverrides: { [string]: any }?,
 	type: Type?,
 
+	movementMode: "ground" | "flying" | nil,
 	movementOverride: string?,
 	attackOverride: string?,
 }
