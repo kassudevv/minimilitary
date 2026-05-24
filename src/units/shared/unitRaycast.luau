@@ -269,6 +269,74 @@ local function setUnitPositionWithOrientationFromSampledPath(
 	end
 end
 
+local function closestPointOnCircle(
+	center: Vector3, -- enemy position
+	radius: number, -- max_range in world units
+	point: Vector3 -- your unit's position
+): Vector3
+	local dir = point - center
+
+	-- If the unit is exactly on top of the enemy (degenerate case),
+	-- just pick an arbitrary direction
+	if dir.Magnitude < 0.001 then
+		dir = Vector3.new(1, 0, 0)
+	end
+
+	-- Normalize then scale to radius — that lands you ON the circle
+	return center + dir.Unit * radius
+end
+
+local function hasLineOfSight(from: Vector3, to: Vector3): boolean
+	local origin = from + Vector3.new(0, 2, 0)
+	local target = to + Vector3.new(0, 2, 0)
+	local delta = target - origin
+
+	if delta.Magnitude < 0.001 then
+		return true
+	end
+
+	local result = Workspace:Raycast(origin, delta, getRaycastParams())
+
+	-- Because your raycast params exclude NPCs / player characters,
+	-- a clear shot should return nil. Anything hit is cover/terrain.
+	return result == nil
+end
+
+local function closestPointOnCircleWithLos(center: Vector3, radius: number, point: Vector3, samples: number?): Vector3?
+	samples = samples or 24
+
+	local closest = closestPointOnCircle(center, radius, point)
+
+	if hasLineOfSight(closest, center) then
+		return closest
+	end
+
+	local dir = point - center
+	local baseAngle = math.atan2(dir.Z, dir.X)
+
+	local bestPoint: Vector3? = nil
+	local bestDist = math.huge
+
+	for i = 1, samples do
+		local side = if i % 2 == 0 then 1 else -1
+		local step = math.ceil(i / 2)
+		local angleOffset = (step / samples) * math.pi * 2 * side
+		local angle = baseAngle + angleOffset
+
+		local candidate = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+
+		if hasLineOfSight(candidate, center) then
+			local dist = (candidate - point).Magnitude
+			if dist < bestDist then
+				bestDist = dist
+				bestPoint = candidate
+			end
+		end
+	end
+
+	return bestPoint
+end
+
 return {
 	initRaycastParams = initRaycastParams,
 	getRaycastParams = getRaycastParams,
@@ -277,4 +345,6 @@ return {
 	samplePath = samplePath,
 	setUnitPositionWithOrientationFromSampledPath = setUnitPositionWithOrientationFromSampledPath,
 	calculateGroundOffset = calculateGroundOffset,
+	closestPointOnCircle = closestPointOnCircle,
+	closestPointOnCircleWithLos = closestPointOnCircleWithLos,
 }

@@ -9,8 +9,6 @@ local items = require("../../accounts/shared/items")
 local network = require("../../core/shared/network")
 local plots = require("../client")
 local store = require("./store")
-local unitRaycast = require("../../units/shared/unitRaycast")
-local units = require("../../units/client")
 local Building = {}
 
 local paramsCache: RaycastParams? = nil

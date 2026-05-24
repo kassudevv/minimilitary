@@ -1,8 +1,10 @@
 local StateMachine = {}
 StateMachine.__index = StateMachine
 
+export type State = "idle" | "moving" | "targeting" | "dead"
+
 type StateMachineData = {
-	state: "idle" | "moving" | "targeting",
+	state: State,
 	data: { [string]: any },
 
 	handlers: { [string]: {
@@ -28,7 +30,7 @@ function StateMachine.tick(self: StateMachine, dt: number)
 	self.handlers[self.state].tick(dt)
 end
 
-function StateMachine.transition(self: StateMachine, newState: "idle" | "moving" | "targeting", data: { [string]: any })
+function StateMachine.transition(self: StateMachine, newState: State, data: { [string]: any })
 	local prev = self.state
 
 	-- run exit hook for current state

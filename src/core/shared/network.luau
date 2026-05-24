@@ -1,8 +1,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TypedRemote = require(ReplicatedStorage.Packages.TypedRemote)
+local stateMachine = require("../../units/shared/stateMachine")
 local types = require("../../plots/shared/types")
-local unitTypes = require("../../units/shared/types")
 
 type RF<T..., R...> = TypedRemote.Function<T..., R...>
 type RE<T...> = TypedRemote.Event<T...>
@@ -31,7 +31,7 @@ return {
 
 		ApplyPendingHit = RE("H") :: RE<string>,
 
-		ReplicateSM = RE("I") :: RE<string, "idle" | "moving" | "targeting", { [string]: any }>,
+		ReplicateSM = RE("I") :: RE<string, stateMachine.State, { [string]: any }>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)

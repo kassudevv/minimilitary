@@ -1,9 +1,14 @@
+local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/Promise")
 local TableUtil = require("../../../Packages/TableUtil")
 local constants = require("../shared/constants")
+local encoder = require("../shared/encoder")
 local network = require("../../core/shared/network")
 local projectiles = require("./projectiles")
 local stateMachine = require("../shared/stateMachine")
@@ -17,10 +22,9 @@ SMUnit.__index = SMUnit
 type SMUnitData = {
 	def: types.Unit,
 	guid: string,
+	owner: string,
 
 	stateMachine: stateMachine.StateMachine,
-	state: "moving" | "targeting" | "idle",
-	stateData: { [string]: any },
 
 	model: Model,
 	lastProjectileTs: number,
@@ -29,6 +33,7 @@ type SMUnitData = {
 	animator: Animator,
 	loadedAnims: { [string]: Animation },
 	loadedTracks: { [string]: AnimationTrack },
+	cache: { [string]: any },
 }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
@@ -37,12 +42,54 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 
 	self.def = def
 	self.guid = snapshot.guid
+	self.owner = snapshot.owner
 	self.lastProjectileTs = 0
-	self.projectile = projectiles.default
+	self.cache = {}
+	self.projectile = def.attackOverride and projectiles[def.attackOverride] or projectiles.default
 	self.stateMachine = stateMachine.new({
 		state = "idle",
 		data = {},
 		handlers = {
+			dead = {
+				onEnter = function(prev)
+					local gravestone = ReplicatedStorage.Gravestone:Clone()
+
+					local params = unitRaycast.getRaycastParams()
+					local ground = Workspace:Raycast(
+						self.model:GetPivot().Position + Vector3.new(0, 10, 0),
+						-Vector3.yAxis * 20,
+						params
+					)
+					if ground then
+						gravestone:PivotTo(
+							CFrame.new(ground.Position + Vector3.new(0, 0.7, 0))
+								* self.model:GetPivot().Rotation
+								* CFrame.Angles(0, math.rad(180), 0)
+						)
+					end
+					self.model.Parent = Lighting
+					gravestone.Parent = Workspace.Terrain
+					self.stateMachine.data.gravestone = gravestone
+
+					if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
+						local vfx = ReplicatedStorage.VFX.MissileImpactBig
+						local expl = vfx:Clone()
+						expl.Position = self.model:GetPivot().Position
+						expl.Parent = workspace.Terrain
+						for _, emitter in expl:GetChildren() do
+							emitter = emitter :: ParticleEmitter
+							emitter:Emit()
+						end
+						Debris:AddItem(expl, 3)
+					end
+				end,
+				tick = function(dt)
+					for _, c in self.stateMachine.data.gravestone:GetChildren() do
+						c.Transparency = math.min(c.Transparency + dt * 1 / 10, 1)
+					end
+				end,
+				onExit = function(next) end,
+			},
 			idle = {
 				onEnter = function(prev)
 					self:playAnimation("Idle")
@@ -63,11 +110,11 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						self.model,
 						self.stateMachine.data.waypoints,
 						distance,
-						self.def.offset
+						(self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0)
 					)
 
 					if distance > self.stateMachine.data.totalLength then
-						local state: "idle" | "moving" | "targeting" = "idle"
+						local state: stateMachine.State = "idle"
 						self.stateMachine:transition(state, {})
 					end
 				end,
@@ -79,15 +126,22 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				onEnter = function(prev)
 					local target = self.stateMachine.data.target :: SMUnit
 					self:faceTarget(target.model:GetPivot().Position)
+
 					self.stateMachine.data.start = 0
 					self.stateMachine.data.isReadyToFire = false
 				end,
 				tick = function(dt)
+					local target = self.stateMachine.data.target :: SMUnit
+					local distance = (self.model:GetPivot().Position - target.model:GetPivot().Position).Magnitude
+					if target.stateMachine.state == "dead" or (distance > self.def.range) then
+						self.stateMachine:transition("idle" :: stateMachine.State, {})
+						return
+					end
+
 					if os.clock() < self.stateMachine.data.firstShotTs then
 						return
 					end
 
-					local target = self.stateMachine.data.target
 					if
 						not self.stateMachine.data.isReadyToFire
 						and (os.clock() - self.lastProjectileTs) > 1 / self.def.firerate
@@ -105,9 +159,47 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						self.lastProjectileTs = self.stateMachine.data.start
 						self.stateMachine.data.isReadyToFire = false
 
-						self.projectile(self, target.model:GetPivot().Position):andThen(function()
-							network.Units.ApplyPendingHit:FireServer(target.guid)
-						end)
+						local targetPos = target.model:GetPivot().Position
+						self.projectile(self, targetPos)
+							:andThen(function()
+								if target.stateMachine.state ~= "dead" then
+									if table.find({ "troop" }, target.def.type or "troop") then
+										local b = ReplicatedStorage.VFX.Blood:Clone()
+										b.CFrame = target.model:GetPivot()
+										b.Parent = Workspace.Terrain
+										for _, c in b:GetChildren() do
+											(c :: ParticleEmitter):Emit()
+										end
+										Debris:AddItem(b, 1)
+									end
+
+									if table.find({ "helicopter", "tank", "plane" }, target.def.type or "troop") then
+										local vfx = ReplicatedStorage.VFX.BulletImpact
+										local expl = vfx:Clone()
+
+										local target = target.model:GetPivot().Position
+										local spread = 2
+										local angle = math.random() * math.pi * 2
+										local radius = math.sqrt(math.random()) * spread
+										target += Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+
+										expl.Position = target
+										expl.Parent = workspace.Terrain
+										for _, emitter in expl:GetChildren() do
+											emitter = emitter :: ParticleEmitter
+											emitter:Emit()
+										end
+									end
+								end
+							end)
+							:finally(function()
+								if
+									self.owner == Players.LocalPlayer.Name
+									or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
+								then
+									network.Units.ApplyPendingHit:FireServer(target.guid)
+								end
+							end)
 					end
 				end,
 				onExit = function(next)
@@ -133,7 +225,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	end
 
 	self.model:ScaleTo(self.def.scale)
-	self.model:PivotTo(snapshot.position)
+
 	self.model.Parent = Workspace.NPCs
 	self.stateMachine:transition("idle", {})
 
@@ -143,6 +235,15 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				p.CanCollide = false
 				p.Anchored = p.Name == "HumanoidRootPart"
 			end
+		end
+
+		local params = unitRaycast.getRaycastParams()
+		local ground =
+			Workspace:Raycast(snapshot.position.Position + Vector3.new(0, 100, 0), -Vector3.yAxis * 150, params)
+		if ground then
+			self.model:PivotTo(
+				CFrame.new(ground.Position + Vector3.new(0, self.def.offset, 0)) * snapshot.position.Rotation
+			)
 		end
 	end)
 
@@ -185,6 +286,10 @@ function SMUnit.stopAnimation(self: SMUnit, anim: string)
 	end
 end
 
+function SMUnit.cleanup(self: SMUnit)
+	self.model:Destroy()
+end
+
 local SMUnits = {}
 
 function SMUnits.init(self: SMUnits)
@@ -200,7 +305,7 @@ function SMUnits.init(self: SMUnits)
 	end)
 
 	network.Units.ReplicateSM.OnClientEvent:Connect(
-		function(guid: string, state: "idle" | "moving" | "targeting", data: { [string]: any })
+		function(guid: string, state: stateMachine.State, data: { [string]: any })
 			for _, u in self.units do
 				if u.guid ~= guid then
 					continue
@@ -208,6 +313,7 @@ function SMUnits.init(self: SMUnits)
 
 				if state == "moving" then
 					data["startTime"] = os.clock()
+					data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
 				end
 
 				if state == "targeting" then
@@ -215,6 +321,13 @@ function SMUnits.init(self: SMUnits)
 						return u.guid == data.target
 					end)
 					data["firstShotTs"] = os.clock() + data.firstShotDelay
+				end
+
+				if state == "dead" then
+					task.delay(10, function()
+						self.units[guid]:cleanup()
+						self.units[guid] = nil
+					end)
 				end
 
 				u.stateMachine:transition(state, data)
@@ -226,9 +339,15 @@ function SMUnits.init(self: SMUnits)
 
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
 		for _, snapshot in snapshots do
+			if self.units[snapshot.guid] then
+				print("attempted duplicate unit load")
+				continue
+			end
+
 			local unit = constants.getUnit(snapshot.unitId)
 			assert(unit ~= nil, "unit is nil")
-			table.insert(self.units, SMUnit.new(unit, snapshot))
+			self.units[snapshot.guid] = SMUnit.new(unit, snapshot)
+			task.wait()
 		end
 	end)
 	task.wait(1)
@@ -253,8 +372,9 @@ function SMUnits.initControls(self: SMUnits)
 			end
 
 			for _, u in self.units do
-				local state: "idle" | "moving" | "targeting" = "idle"
-				u.stateMachine:transition(state, {})
+				if u.owner == Players.LocalPlayer.Name then
+					u.stateMachine:transition("idle", {})
+				end
 			end
 
 			network.Units.RequestPath:FireServer(result.Position)
@@ -263,7 +383,7 @@ function SMUnits.initControls(self: SMUnits)
 end
 
 type SMUnits = typeof(SMUnits) & {
-	units: { SMUnit },
+	units: { [string]: SMUnit },
 }
 
 return SMUnits :: SMUnits

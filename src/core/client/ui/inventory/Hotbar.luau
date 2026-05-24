@@ -5,13 +5,11 @@ local fonts = require("../utils/fonts")
 local images = require("../images")
 local plotStore = require("../..//../../plots/client/store")
 local px = require("../utils/px")
-local unitStore = require("../../../../units/client/store")
-local units = require("../../../../units/client")
 local create = Vide.create
 
 return function()
-	local account = VideCharm.useSignalState(accountStore.getAccount)
-	local x = VideCharm.useAtom(unitStore.squadControlModeEnabled)
+	-- local account = VideCharm.useSignalState(accountStore.getAccount)
+	-- local x = VideCharm.useAtom(unitStore.squadControlModeEnabled)
 
 	return Vide.create("Frame")({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -50,7 +48,7 @@ return function()
 					BackgroundTransparency = 1,
 					LayoutOrder = 69,
 					Activated = function()
-						unitStore.squadControlModeEnabled(not unitStore.squadControlModeEnabled())
+						-- unitStore.squadControlModeEnabled(not unitStore.squadControlModeEnabled())
 					end,
 				}),
 				create("ImageButton")({
@@ -60,12 +58,14 @@ return function()
 					BackgroundTransparency = 1,
 					LayoutOrder = 69,
 					Activated = function()
-						plotStore.buildingModeEnabled(not plotStore.buildingModeEnabled())
+						-- plotStore.buildingModeEnabled(not plotStore.buildingModeEnabled())
 					end,
 				}),
 			}),
 
-			Vide.show(x, function()
+			Vide.show(function()
+				return true
+			end, function()
 				return create("TextLabel")({
 					TextSize = px(32),
 					FontFace = fonts.inter.bold,
@@ -74,11 +74,11 @@ return function()
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					TextColor3 = Color3.fromHex("#FFFFFF"),
 					Text = function()
-						local amt = 0
-						for _, u in units.localUnits do
-							amt += 1
-						end
-						return `Controlling Squad #1 (x{amt})`
+						-- local amt = 0
+						-- for _, u in units.localUnits do
+						-- 	amt += 1
+						-- end
+						return `Controlling Squad #1 `
 					end,
 					TextXAlignment = Enum.TextXAlignment.Center,
 				})

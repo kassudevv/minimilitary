@@ -2,10 +2,10 @@ local HttpService = game:GetService("HttpService")
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
+local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local spatialGrid = require("./spatialGrid")
 local stateMachine = require("@game/ReplicatedStorage/src/units/shared/stateMachine")
@@ -29,7 +29,7 @@ type SMUnitData = {
 }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
-function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFrame): SMUnit
+function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFrame, destroyCb: (SMUnit) -> ()): SMUnit
 	local self = setmetatable({} :: SMUnitData, SMUnit)
 
 	self.def = def
@@ -43,6 +43,13 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 		state = "idle",
 		data = {},
 		handlers = {
+			dead = {
+				onEnter = function(prev)
+					destroyCb(self)
+				end,
+				tick = function(dt) end,
+				onExit = function(next) end,
+			},
 			idle = {
 				onEnter = function(prev) end,
 				tick = function(dt) end,
@@ -63,7 +70,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 					)
 
 					if distance > self.stateMachine.data.totalLength then
-						local state: "idle" | "moving" | "targeting" = "idle"
+						local state: stateMachine.State = "idle"
 						self:replicatedTransition(state, {})
 					end
 				end,
@@ -71,17 +78,21 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 			},
 			targeting = {
 				onEnter = function(prev)
-					local target = self.stateMachine.data.target
 					self.stateMachine.data.start = 0
 					self.stateMachine.data.isReadyToFire = false
-					-- self.lastProjectileTs = os.clock()
 				end,
 				tick = function(dt)
+					local target = self.stateMachine.data.target
+					local distance = (self.pawn.Position - target.pawn.Position).Magnitude
+					if target.stateMachine.state == "dead" or (distance > self.def.range) then
+						self:replicatedTransition("idle" :: stateMachine.State, {})
+						return
+					end
+
 					if os.clock() < self.stateMachine.data.firstShotTs then
 						return
 					end
 
-					local target = self.stateMachine.data.target
 					if
 						not self.stateMachine.data.isReadyToFire
 						and (os.clock() - self.lastProjectileTs) > 1 / self.def.firerate
@@ -98,7 +109,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 						self.lastProjectileTs = self.stateMachine.data.start
 						self.stateMachine.data.isReadyToFire = false
 
-						table.insert(target.damageQueue, self.def.damage)
+						table.insert(target.damageQueue, self.def.damage * (self.owner == "pve" and 0.001 or 10))
 					end
 				end,
 				onExit = function(next) end,
@@ -129,10 +140,16 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 end
 
 function SMUnit.snapshot(self: SMUnit): types.UnitSnapshot
-	return { unitId = self.def.id or "gunner", position = self.pawn.CFrame, guid = self.guid }
+	return { unitId = self.def.id or "gunner", position = self.pawn.CFrame, guid = self.guid, owner = self.owner }
 end
 
 function SMUnit.move(self: SMUnit, target: Vector3)
+	if self.stateMachine.state == "dead" then
+		return
+	end
+
+	self:replicatedTransition("idle")
+
 	self.pathfinder:ComputeAsync(self.pawn.Position, target)
 	if self.pathfinder.Status ~= Enum.PathStatus.Success then
 		return
@@ -153,13 +170,18 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 	end
 
 	self:replicatedTransition("moving", {
-		waypoints = wps,
+		waypoints = encoder.encodeWaypoints(wps),
 		totalLength = unitRaycast.getPathLength(wps),
 		startTime = os.clock(),
 	})
+	self.stateMachine.data.waypoints = wps
 end
 
 function SMUnit.target(self: SMUnit, target: SMUnit)
+	if self.stateMachine.state == "dead" then
+		return
+	end
+
 	local firstShotDelay = math.random() * 0.35
 	self:replicatedTransition("targeting", {
 		startTime = os.clock(),
@@ -170,9 +192,24 @@ function SMUnit.target(self: SMUnit, target: SMUnit)
 	self.stateMachine.data.target = target
 end
 
-function SMUnit.replicatedTransition(self: SMUnit, newState: "idle" | "moving" | "targeting", data: { [string]: any })
+function SMUnit.replicatedTransition(self: SMUnit, newState: stateMachine.State, data: { [string]: any })
 	self.stateMachine:transition(newState, data)
 	network.Units.ReplicateSM:FireAllClients(self.guid, newState, data)
+end
+
+function SMUnit.damage(self: SMUnit, amt: number)
+	if self.stateMachine.state == "dead" then
+		return
+	end
+
+	self.health -= amt
+	if self.health <= 0 then
+		self.replicatedTransition(self, "dead", {})
+	end
+end
+
+function SMUnit.cleanup(self: SMUnit)
+	self.pawn:Destroy()
 end
 
 local SMUnits = {}
@@ -180,15 +217,12 @@ local SMUnits = {}
 function SMUnits.init(self: SMUnits)
 	self.units = {}
 	self.targetGrid = spatialGrid.new(64)
-
 	unitRaycast:initRaycastParams()
-
 	RunService.Heartbeat:Connect(function(dt)
 		for _, u in self.units do
 			u.stateMachine:tick(dt)
 		end
 	end)
-
 	local lastTick = 0
 	local tickRate = 1 / 10
 	RunService.Heartbeat:Connect(function(dt)
@@ -197,72 +231,83 @@ function SMUnits.init(self: SMUnits)
 		end
 		lastTick = os.clock()
 
-		local idleUnits = TableUtil.Filter(self.units, function(u: SMUnit)
-			return u.stateMachine.state == "idle"
-		end)
-
 		self.targetGrid:rebuild(self.units)
 
-		for _, u in idleUnits do
+		for _, u in self.units do
+			if u.stateMachine.state ~= "idle" then
+				continue
+			end
+
 			local attackRange = u.def.range
-			local targetRange = attackRange * 1.4
+			local pveTargetRange = attackRange * 1.1
+			local targetRange = attackRange * 1.3
 
 			local nearest, nearestDist = nil, math.huge
 			self.targetGrid:forEachEnemyInRange(u, targetRange, function(target, distSq)
 				local dist = math.sqrt(distSq)
 
-				if dist < nearestDist then
+				if dist < nearestDist and target.stateMachine.state ~= "dead" then
 					nearest = target
 					nearestDist = dist
-					return
 				end
 			end)
 
 			if nearest and nearestDist <= attackRange then
-				task.spawn(function()
-					u:target(nearest)
-				end)
-				-- u:startTargeting(nearest)
+				u:target(nearest)
 				continue
 			end
 
 			if nearest and nearestDist <= targetRange then
-				-- if u.owner ~= "pve" and nearest.owner == "pve" then
-				-- 	local closest = closestPointOnCircle(
-				-- 		nearest.pawn.Position,
-				-- 		attackRange * math.random(50, 90) * 0.01,
-				-- 		unit.pawn.Position
-				-- 	)
-				-- 	unit:moveTo(closest)
-				-- end
+				if (u.owner ~= "pve" and nearest.owner == "pve") or (nearestDist <= pveTargetRange) then
+					if u.def.movementMode == "flying" then
+						local closest = unitRaycast.closestPointOnCircle(
+							nearest.pawn.Position,
+							attackRange * math.random(50, 90) * 0.01,
+							u.pawn.Position
+						)
+						u:move(closest)
+					else
+						local closest = unitRaycast.closestPointOnCircleWithLos(
+							nearest.pawn.Position,
+							attackRange * math.random(50, 90) * 0.01,
+							u.pawn.Position
+						)
+
+						if closest then
+							u:move(closest)
+						end
+					end
+				end
 			end
 		end
 	end)
 
+	--network
+	local destroyCb = function(u: SMUnit)
+		u:cleanup()
+		self.units[u.guid] = nil
+	end
+
 	network.Units.RequestPath.OnServerEvent:Connect(function(plr: Player, target: Vector3)
-		local flyingUnits = TableUtil.Filter(self.units, function(u: SMUnit)
-			return u.owner == plr.Name and u.def.movementMode == "flying"
-		end)
-		local groundUnits = TableUtil.Filter(self.units, function(u: SMUnit)
-			return u.owner == plr.Name and u.def.movementMode ~= "flying"
-		end)
+		local flyingUnits, groundUnits = {}, {}
+		for k, u in self.units do
+			if u.owner ~= plr.Name then
+				continue
+			end
+			local tbl = u.def.movementMode == "flying" and flyingUnits or groundUnits
+			table.insert(tbl, u)
+		end
 
 		local flyingFormation = unitRaycast.buildFormation(target, flyingUnits, 0)
 		local groundFormation = unitRaycast.buildFormation(target, groundUnits, 0)
 
 		for i, u in groundUnits do
-			local state: "idle" | "moving" | "targeting" = "idle"
-			u.stateMachine:transition(state, {})
-
 			task.spawn(function()
 				u:move(groundFormation[i])
 			end)
 		end
 
 		for i, u in flyingUnits do
-			local state: "idle" | "moving" | "targeting" = "idle"
-			u.stateMachine:transition(state, {})
-
 			task.spawn(function()
 				u:move(flyingFormation[i])
 			end)
@@ -273,17 +318,19 @@ function SMUnits.init(self: SMUnits)
 		for _, u in self.units do
 			if u.guid == target then
 				local dmg = table.remove(u.damageQueue, 1)
-				assert(dmg ~= nil, "couldn't apply pend hit")
-				u.health -= dmg
+				if not dmg then
+					return
+				end
+				u:damage(dmg)
 				return
 			end
 		end
 	end)
 
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
-		local rand = { "gunner" }
-		-- local rand = { "apache", "gunner", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 15 do
+		local rand =
+			{ "gunner", "gunner", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
+		for i = 1, 1 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
@@ -291,35 +338,45 @@ function SMUnits.init(self: SMUnits)
 
 		local account = accountStore.getAccount(plr.Name)
 
+		local loadQueue = {}
 		if account then
 			for guid, uData in account.units do
 				local unitDef = constants.getUnit(uData.unitId) :: types.Unit
 				local char = plr.Character or plr.CharacterAdded:Wait()
-				table.insert(self.units, SMUnit.new(unitDef, plr, guid, char:GetPivot()))
+				self.units[guid] = SMUnit.new(unitDef, plr, guid, char:GetPivot(), destroyCb)
+				table.insert(loadQueue, self.units[guid]:snapshot())
 			end
 		end
-
-		local unitDef = constants.getUnit("gunner") :: types.Unit
-		table.insert(
-			self.units,
-			SMUnit.new(
-				unitDef,
-				nil,
-				HttpService:GenerateGUID(false),
-				CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30)))
-			)
-		)
-
-		local sp = {}
-		for _, u in self.units do
-			table.insert(sp, u:snapshot())
-		end
-		network.Units.LoadUnits:FireAllClients(sp)
+		self:LoadAllUnitsForPlayer(plr)
+		network.FireAllExcept(network.Units.LoadUnits, plr, loadQueue)
 	end)
+
+	local n = {}
+	for _ = 1, 10 do
+		local unitDef = constants.getUnit(math.random(1, 2) == 1 and "gunner" or "gunner") :: types.Unit
+		local guid = HttpService:GenerateGUID(false)
+		self.units[guid] = SMUnit.new(
+			unitDef,
+			nil,
+			guid,
+			CFrame.new(Vector3.new(-38 + (math.random() * 120) - 60, 4.5, -183.5 + ((math.random() * 60) - 30))),
+			destroyCb
+		)
+		table.insert(n, self.units[guid]:snapshot())
+	end
+	network.Units.LoadUnits:FireAllClients(n)
+end
+
+function SMUnits.LoadAllUnitsForPlayer(self: SMUnits, plr: Player)
+	local loadQueue = {}
+	for _, u in self.units do
+		table.insert(loadQueue, u:snapshot())
+	end
+	network.Units.LoadUnits:FireClient(plr, loadQueue)
 end
 
 type SMUnits = typeof(SMUnits) & {
-	units: { SMUnit },
+	units: { [string]: SMUnit },
 	targetGrid: spatialGrid.SpatialGrid,
 }
 

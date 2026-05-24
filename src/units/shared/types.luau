@@ -1,5 +1,6 @@
 export type UnitSnapshot = {
 	unitId: string,
+	owner: string,
 	position: CFrame,
 	guid: string,
 }
