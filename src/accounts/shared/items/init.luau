@@ -2,6 +2,7 @@ local constants = require("@self/constants")
 local types = require("@self/types")
 
 export type Item = types.Item
+export type ItemInfo = types.ItemInfo
 export type ItemCropData = types.ItemCropData
 export type ItemBuildingData = types.ItemBuildingData
 local function stringifyItem(item: Item): string

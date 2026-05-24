@@ -1,10 +1,10 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local Building = require("@self/Building")
 local Janitor = require("@game/ReplicatedStorage/Packages/Janitor")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local accountStore = require("../accounts/server/accountStore")
-local accountTypes = require("@game/ReplicatedStorage/src/accounts/shared/types")
 local area = require("@game/ReplicatedStorage/src/plots/shared/area")
 local conf = require("@game/ReplicatedStorage/src/plots/shared/conf")
 local grid = require("@game/ReplicatedStorage/src/plots/shared/grid")
@@ -12,10 +12,6 @@ local items = require("@game/ReplicatedStorage/src/accounts/shared/items")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local store = require("../accounts/server/store")
 local types = require("@game/ReplicatedStorage/src/plots/shared/types")
-
---* ────────────────────────────────────────────────────────────────────────────
---* TILES OBJECT
---* ────────────────────────────────────────────────────────────────────────────
 
 --* PLOT
 local Plot = {}
@@ -31,6 +27,7 @@ type PlotData = {
 
 	owner: Player?,
 	area: area.Area,
+	buildings: { [string]: Building.Building },
 }
 
 export type Plot = setmetatable<PlotData, typeof(Plot)>
@@ -43,6 +40,7 @@ function Plot.new(plotSpawn: BasePart, index): Plot
 	self.index = index
 	self.plotSpawn = plotSpawn
 	self.area = area.new()
+	self.buildings = {}
 
 	-- cast to avoid weird error
 	local casted = self :: Plot
@@ -132,6 +130,22 @@ function Plot.charInit(self: Plot)
 	end))
 end
 
+function Plot.placeBuilding(self: Plot, buildingId: string, col: number, row: number, rot: number)
+	local item = items.getItem(buildingId)
+	if not item or not self.owner then
+		return
+	end
+
+	local posInWorld = self.buildGrid:localToWorld(col, row) * CFrame.Angles(0, math.rad(rot), 0)
+	local parent = self.template:FindFirstChild("Misc") :: Folder
+
+	local building = Building.new(item)
+	building:spawn(posInWorld, parent)
+	self.buildings[building.guid] = building
+
+	network.Plots.ReplicateBuilding:FireClient(self.owner, building:snapshot())
+end
+
 --* PLOTS
 local Plots = {}
 
@@ -163,27 +177,15 @@ function Plots.init(self: Plots)
 		plr: Player,
 		buildingId: string,
 		col: number,
-		row: number
+		row: number,
+		rot: number
 	): boolean?
 		local plot = self:getPlayerPlot(plr)
 		if not plot then
 			return nil
 		end
 
-		local building = items.getItem(buildingId)
-
-		local data = building.data :: items.ItemBuildingData
-
-		local posInWorld = plot.buildGrid:localToWorld(col, row)
-		local m = data.model:Clone()
-		for _, c in m:GetDescendants() do
-			if c:IsA("BasePart") then
-				c.CanCollide = false
-			end
-		end
-		m:PivotTo(posInWorld)
-		m.Parent = Workspace
-
+		plot:placeBuilding(buildingId, col, row, rot)
 		return true
 	end
 
@@ -209,43 +211,3 @@ type Plots = typeof(Plots) & {
 }
 
 return Plots :: Plots
-
--- local function checkCollision(posInWorld, data: items.ItemBuildingData, height)
--- 		task.delay(0.2, function()
--- 			-- anti stuck
--- 			local params = OverlapParams.new()
--- 			params.FilterType = Enum.RaycastFilterType.Include
--- 			local filterPlrs = {}
--- 			for _, p in Players:GetPlayers() do
--- 				local c = p.Character
--- 				if c then
--- 					table.insert(filterPlrs, c)
--- 				end
--- 			end
--- 			local completed = {}
--- 			params.FilterDescendantsInstances = filterPlrs
--- 			params.RespectCanCollide = false
-
--- 			local colls =
--- 				Workspace:GetPartBoundsInBox(posInWorld, Vector3.new(data.size.X, height, data.size.Y), params)
--- 			for _, coll in colls do
--- 				local collidingChar = coll:FindFirstAncestorOfClass("Model")
--- 				if not collidingChar then
--- 					continue
--- 				end
-
--- 				local collidingPlr = Players:GetPlayerFromCharacter(collidingChar)
--- 				if not collidingPlr or table.find(completed, collidingPlr) then
--- 					continue
--- 				end
-
--- 				table.insert(completed, collidingPlr)
-
--- 				local result =
--- 					Workspace:Raycast(collidingChar:GetPivot().Position + Vector3.new(0, 100, 0), -Vector3.yAxis * 1000)
--- 				if result then
--- 					collidingChar:PivotTo(CFrame.new(result.Position.X, result.Position.Y + 10, result.Position.Z))
--- 				end
--- 			end
--- 		end)
--- 	end

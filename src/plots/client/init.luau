@@ -1,3 +1,4 @@
+local Building = require("@self/Building")
 local area = require("./shared/area")
 local conf = require("@game/ReplicatedStorage/src/plots/shared/conf")
 local grid = require("@game/ReplicatedStorage/src/plots/shared/grid")
@@ -13,6 +14,7 @@ type PlotData = {
 	buildGrid: grid.Grid,
 	buildSnapGrid: grid.Grid,
 	area: area.Area,
+	buildings: { [string]: Building.Building },
 }
 
 export type Plot = setmetatable<PlotData, typeof(Plot)>
@@ -62,8 +64,12 @@ function Plot.isValidPlacement(self: Plot, col: number, row: number, size: Vecto
 	return v
 end
 
+function Plot.connectBuilding(self: Plot, snapshot: types.BuildingSnapshot)
+	self.buildings[snapshot.guid] = Building.new(snapshot)
+end
+
 function Plot.init(self: Plot)
-	print("Init local plot")
+	self.buildings = {}
 end
 
 local Plots = {}
@@ -76,6 +82,10 @@ function Plots.init(self: Plots)
 
 	self.plot = Plot.new(p)
 	self.plot:init()
+
+	network.Plots.ReplicateBuilding.OnClientEvent:Connect(function(snapshot: types.BuildingSnapshot)
+		self.plot:connectBuilding(snapshot)
+	end)
 end
 
 type Plots = typeof(Plots) & { plot: Plot }

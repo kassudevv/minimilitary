@@ -1,8 +1,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TypedRemote = require(ReplicatedStorage.Packages.TypedRemote)
+local plotTypes = require("../../plots/shared/types")
 local stateMachine = require("../../units/shared/stateMachine")
-local types = require("../../plots/shared/types")
 local unitTypes = require("../../units/shared/types")
 type RF<T..., R...> = TypedRemote.Function<T..., R...>
 type RE<T...> = TypedRemote.Event<T...>
@@ -14,8 +14,9 @@ return {
 		Patch = RE("Patch") :: RE<any>,
 	},
 	Plots = {
-		RequestPlot = RF("RequestPlot") :: RF<(), (types.PlotSnapshot?)>,
-		PlaceBuilding = RF("PlaceBuilding") :: RF<(string, number, number), (boolean?)>,
+		RequestPlot = RF("RequestPlot") :: RF<(), (plotTypes.PlotSnapshot?)>,
+		PlaceBuilding = RF("PlaceBuilding") :: RF<(string, number, number, number), (boolean?)>,
+		ReplicateBuilding = RE("ReplicateBuilding") :: RE<plotTypes.BuildingSnapshot>,
 	},
 	Units = {
 		RequestUnits = RE("A") :: RE<>, -- player loaded into plot, spawn units

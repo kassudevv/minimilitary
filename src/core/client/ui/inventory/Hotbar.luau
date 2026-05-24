@@ -1,10 +1,9 @@
 local Vide = require("../Vide")
-local VideCharm = require("../../../../../Packages/VideCharm")
-local accountStore = require("../../../../accounts/client/store")
 local fonts = require("../utils/fonts")
 local images = require("../images")
 local plotStore = require("../..//../../plots/client/store")
 local px = require("../utils/px")
+local unitStore = require("../../../../units/client/store")
 local create = Vide.create
 
 return function()
@@ -48,7 +47,7 @@ return function()
 					BackgroundTransparency = 1,
 					LayoutOrder = 69,
 					Activated = function()
-						-- unitStore.squadControlModeEnabled(not unitStore.squadControlModeEnabled())
+						unitStore.movementMode(not unitStore.movementMode())
 					end,
 				}),
 				create("ImageButton")({
