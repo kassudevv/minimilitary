@@ -9,13 +9,13 @@ local unitsById: { [string]: Unit } = {
 		name = "Gunner",
 		model = ReplicatedStorage.NPCs.Gunner,
 
-		maxHealth = 12,
+		maxHealth = 60,
 		damage = 6,
 		range = 64,
 
 		speed = 12,
 		scale = 0.6,
-		firerate = 2,
+		firerate = 6,
 
 		boundsRadius = 2,
 	},
@@ -64,7 +64,7 @@ local unitsById: { [string]: Unit } = {
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankTiger1,
 		maxHealth = 100,
-		damage = 25,
+		damage = 250,
 		range = 58,
 		speed = 10,
 		scale = 1.8,

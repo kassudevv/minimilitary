@@ -106,10 +106,15 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 							return
 						end
 
+						if not self:hasLineOfSight(target) then
+							self:replicatedTransition("idle" :: stateMachine.State, {})
+							return
+						end
+
 						self.lastProjectileTs = self.stateMachine.data.start
 						self.stateMachine.data.isReadyToFire = false
 
-						table.insert(target.damageQueue, self.def.damage * (self.owner == "pve" and 0.001 or 10))
+						target:addToDamageQueue(self.def.damage * (self.owner == "pve" and 0.001 or 1))
 					end
 				end,
 				onExit = function(next) end,
@@ -177,6 +182,19 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 	self.stateMachine.data.waypoints = wps
 end
 
+function SMUnit.hasLineOfSight(self: SMUnit, target: SMUnit): boolean
+	local from = self.pawn.Position + Vector3.new(0, 2, 0)
+	local to = target.pawn.Position + Vector3.new(0, 2, 0)
+	local delta = to - from
+
+	if delta.Magnitude < 0.001 then
+		return true
+	end
+
+	local losRc = Workspace:Raycast(from, delta, unitRaycast.getLosRaycastParams())
+	return not losRc
+end
+
 function SMUnit.target(self: SMUnit, target: SMUnit)
 	if self.stateMachine.state == "dead" then
 		return
@@ -208,6 +226,10 @@ function SMUnit.damage(self: SMUnit, amt: number)
 	end
 end
 
+function SMUnit.addToDamageQueue(self: SMUnit, amt: number)
+	table.insert(self.damageQueue, amt)
+end
+
 function SMUnit.cleanup(self: SMUnit)
 	self.pawn:Destroy()
 end
@@ -217,14 +239,17 @@ local SMUnits = {}
 function SMUnits.init(self: SMUnits)
 	self.units = {}
 	self.targetGrid = spatialGrid.new(64)
+
 	unitRaycast:initRaycastParams()
+	unitRaycast:initLosRaycastParams()
+
 	RunService.Heartbeat:Connect(function(dt)
 		for _, u in self.units do
 			u.stateMachine:tick(dt)
 		end
 	end)
 	local lastTick = 0
-	local tickRate = 1 / 10
+	local tickRate = 1 / 2
 	RunService.Heartbeat:Connect(function(dt)
 		if (os.clock() - lastTick) < tickRate then
 			return
@@ -239,8 +264,8 @@ function SMUnits.init(self: SMUnits)
 			end
 
 			local attackRange = u.def.range
-			local pveTargetRange = attackRange * 1.1
-			local targetRange = attackRange * 1.3
+			local pveTargetRange = attackRange * 1.025
+			local targetRange = attackRange * 1.15
 
 			local nearest, nearestDist = nil, math.huge
 			self.targetGrid:forEachEnemyInRange(u, targetRange, function(target, distSq)
@@ -252,13 +277,22 @@ function SMUnits.init(self: SMUnits)
 				end
 			end)
 
-			if nearest and nearestDist <= attackRange then
+			if nearest and nearestDist <= attackRange and u:hasLineOfSight(nearest) then
 				u:target(nearest)
 				continue
 			end
 
 			if nearest and nearestDist <= targetRange then
-				if (u.owner ~= "pve" and nearest.owner == "pve") or (nearestDist <= pveTargetRange) then
+				if
+					(u.owner ~= "pve" and nearest.owner == "pve")
+					or (u.owner == "pve" and nearestDist <= pveTargetRange)
+				then
+					-- local closest = unitRaycast.closestPointOnCircle(
+					-- 	nearest.pawn.Position,
+					-- 	attackRange * math.random(50, 90) * 0.01,
+					-- 	u.pawn.Position
+					-- )
+					-- u:move(closest)
 					if u.def.movementMode == "flying" then
 						local closest = unitRaycast.closestPointOnCircle(
 							nearest.pawn.Position,
@@ -266,16 +300,17 @@ function SMUnits.init(self: SMUnits)
 							u.pawn.Position
 						)
 						u:move(closest)
-					else
-						local closest = unitRaycast.closestPointOnCircleWithLos(
-							nearest.pawn.Position,
-							attackRange * math.random(50, 90) * 0.01,
-							u.pawn.Position
-						)
+						continue
+					end
 
-						if closest then
-							u:move(closest)
-						end
+					local closest = unitRaycast.closestPointOnCircleWithLos(
+						nearest.pawn.Position,
+						attackRange * math.random(50, 90) * 0.01,
+						u.pawn.Position
+					)
+
+					if closest then
+						u:move(closest)
 					end
 				end
 			end

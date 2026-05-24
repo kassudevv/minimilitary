@@ -1,6 +1,35 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local types = require("./types")
+
+local losParams = RaycastParams.new()
+local losInitialized = false
+
+local function initLosRaycastParams()
+	if losInitialized then
+		return
+	end
+	losInitialized = true
+
+	local blockers = Workspace.PVE:WaitForChild("LineOfSightBlockers")
+
+	local function refresh()
+		losParams.FilterType = Enum.RaycastFilterType.Include
+		losParams.FilterDescendantsInstances = { blockers }
+	end
+
+	refresh()
+
+	-- re-include if folder is replaced entirely (edge case)
+	Workspace.PVE.ChildAdded:Connect(function(child)
+		if child.Name == "LineOfSightBlockers" then
+			refresh()
+		end
+	end)
+end
+
+local function getLosRaycastParams(): RaycastParams
+	return losParams
+end
 
 local raycastParams = RaycastParams.new()
 
@@ -295,7 +324,7 @@ local function hasLineOfSight(from: Vector3, to: Vector3): boolean
 		return true
 	end
 
-	local result = Workspace:Raycast(origin, delta, getRaycastParams())
+	local result = Workspace:Raycast(origin, delta, getLosRaycastParams())
 
 	-- Because your raycast params exclude NPCs / player characters,
 	-- a clear shot should return nil. Anything hit is cover/terrain.
@@ -340,9 +369,13 @@ end
 return {
 	initRaycastParams = initRaycastParams,
 	getRaycastParams = getRaycastParams,
+	initLosRaycastParams = initLosRaycastParams,
+	getLosRaycastParams = getLosRaycastParams,
+
 	buildFormation = buildFormation,
 	getPathLength = getPathLength,
 	samplePath = samplePath,
+
 	setUnitPositionWithOrientationFromSampledPath = setUnitPositionWithOrientationFromSampledPath,
 	calculateGroundOffset = calculateGroundOffset,
 	closestPointOnCircle = closestPointOnCircle,

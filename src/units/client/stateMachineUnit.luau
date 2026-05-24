@@ -10,6 +10,7 @@ local TableUtil = require("../../../Packages/TableUtil")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
 local network = require("../../core/shared/network")
+local particles = require("./particles")
 local projectiles = require("./projectiles")
 local stateMachine = require("../shared/stateMachine")
 local store = require("./store")
@@ -160,35 +161,33 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						self.stateMachine.data.isReadyToFire = false
 
 						local targetPos = target.model:GetPivot().Position
+
+						self:faceTarget(targetPos)
 						self.projectile(self, targetPos)
 							:andThen(function()
 								if target.stateMachine.state ~= "dead" then
 									if table.find({ "troop" }, target.def.type or "troop") then
-										local b = ReplicatedStorage.VFX.Blood:Clone()
-										b.CFrame = target.model:GetPivot()
-										b.Parent = Workspace.Terrain
-										for _, c in b:GetChildren() do
-											(c :: ParticleEmitter):Emit()
-										end
-										Debris:AddItem(b, 1)
+										particles.emit({
+											vfx = "Blood",
+											position = targetPos,
+											spread = 0.1,
+										})
 									end
 
 									if table.find({ "helicopter", "tank", "plane" }, target.def.type or "troop") then
-										local vfx = ReplicatedStorage.VFX.BulletImpact
-										local expl = vfx:Clone()
+										particles.emit({
+											vfx = "BulletImpact",
+											position = targetPos,
+											spread = 3,
+										})
+									end
 
-										local target = target.model:GetPivot().Position
-										local spread = 2
-										local angle = math.random() * math.pi * 2
-										local radius = math.sqrt(math.random()) * spread
-										target += Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-
-										expl.Position = target
-										expl.Parent = workspace.Terrain
-										for _, emitter in expl:GetChildren() do
-											emitter = emitter :: ParticleEmitter
-											emitter:Emit()
-										end
+									if self.def.type == "tank" then
+										particles.emit({
+											vfx = "MissileImpact",
+											position = targetPos,
+											spread = 3,
+										})
 									end
 								end
 							end)
@@ -290,12 +289,30 @@ function SMUnit.cleanup(self: SMUnit)
 	self.model:Destroy()
 end
 
+function SMUnit.hasLineOfSight(self: SMUnit, target: SMUnit): boolean
+	local startPos = self.model:GetPivot().Position
+	local endPos = target.model:GetPivot().Position
+
+	local from = startPos + Vector3.new(0, 2, 0)
+	local to = endPos + Vector3.new(0, 2, 0)
+	local delta = to - from
+
+	if delta.Magnitude < 0.001 then
+		return true
+	end
+
+	local losRc = Workspace:Raycast(from, delta, unitRaycast.getLosRaycastParams())
+	return not losRc
+end
+
 local SMUnits = {}
 
 function SMUnits.init(self: SMUnits)
 	self.units = {}
 
 	unitRaycast:initRaycastParams()
+	unitRaycast:initLosRaycastParams()
+
 	self:initControls()
 
 	RunService.Heartbeat:Connect(function(dt)
