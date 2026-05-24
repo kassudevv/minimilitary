@@ -14,7 +14,7 @@ local unitsById: { [string]: Unit } = {
 		range = 64,
 
 		speed = 12,
-		scale = 0.6,
+		scale = 0.8,
 		firerate = 6,
 
 		boundsRadius = 2,

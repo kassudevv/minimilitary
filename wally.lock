@@ -3,6 +3,11 @@
 registry = "test"
 
 [[package]]
+name = "010devx101/lyra"
+version = "0.6.3"
+dependencies = [["GreenTea", "corecii/greentea@0.4.11"], ["Promise", "evaera/promise@4.0.0"]]
+
+[[package]]
 name = "centau/vide"
 version = "0.4.0"
 dependencies = []
@@ -30,7 +35,7 @@ dependencies = [["Promise", "evaera/promise@4.0.0"]]
 [[package]]
 name = "kaspar/syncedstores"
 version = "0.1.0"
-dependencies = [["Charm", "littensy/charm@0.11.0-rc.6"], ["CharmSync", "littensy/charm-sync@0.4.0-rc.7"], ["Janitor", "howmanysmall/janitor@1.18.3"], ["Lyra", "paradoxum-games/lyra@0.6.0"], ["PromiseTyped", "maximumadhd/promise-typed@1.0.0"], ["Ripple", "littensy/vide-ripple@0.10.2"], ["TableUtil", "sleitnick/table-util@1.2.1"], ["TypedRemote", "sleitnick/typed-remote@0.3.0"], ["Vide", "centau/vide@0.4.0"], ["VideCharm", "littensy/vide-charm@0.4.0-rc.5"], ["gt", "corecii/greentea@0.4.11"]]
+dependencies = [["Charm", "littensy/charm@0.11.0-rc.6"], ["CharmSync", "littensy/charm-sync@0.4.0-rc.7"], ["Janitor", "howmanysmall/janitor@1.18.3"], ["Lyra", "010devx101/lyra@0.6.3"], ["PromiseTyped", "maximumadhd/promise-typed@1.0.0"], ["Ripple", "littensy/vide-ripple@0.10.2"], ["TableUtil", "sleitnick/table-util@1.2.1"], ["TypedRemote", "sleitnick/typed-remote@0.3.0"], ["Vide", "centau/vide@0.4.0"], ["VideCharm", "littensy/vide-charm@0.4.0-rc.5"], ["WaitFor", "sleitnick/wait-for@1.0.0"], ["gt", "corecii/greentea@0.4.11"]]
 
 [[package]]
 name = "littensy/charm"
@@ -63,16 +68,6 @@ version = "1.0.0"
 dependencies = [["PromiseBase", "evaera/promise@4.0.0"]]
 
 [[package]]
-name = "osyrisrblx/t"
-version = "3.1.1"
-dependencies = []
-
-[[package]]
-name = "paradoxum-games/lyra"
-version = "0.6.0"
-dependencies = [["Promise", "evaera/promise@4.0.0"], ["t", "osyrisrblx/t@3.1.1"]]
-
-[[package]]
 name = "sleitnick/table-util"
 version = "1.2.1"
 dependencies = []
@@ -81,3 +76,8 @@ dependencies = []
 name = "sleitnick/typed-remote"
 version = "0.3.0"
 dependencies = []
+
+[[package]]
+name = "sleitnick/wait-for"
+version = "1.0.0"
+dependencies = [["Promise", "evaera/promise@4.0.0"]]

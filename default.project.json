@@ -62,6 +62,12 @@
             "$path": "src/core/server"
           }
         },
+        "outposts": {
+          "$className": "Folder",
+          "server": {
+            "$path": "src/outposts/server"
+          }
+        },
         "plots": {
           "$className": "Folder",
           "server": {

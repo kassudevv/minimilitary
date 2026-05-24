@@ -28,6 +28,7 @@ return Lyra.createPlayerStore({
 		return ok, tostring(reason)
 	end,
 	changedCallbacks = { onAccountChanged },
-	memoryStoreService = if RunService:IsStudio() then Lyra.MockMemoryStoreService.new() else nil,
-	dataStoreService = if RunService:IsStudio() then Lyra.MockDataStoreService.new() else nil,
+	useMock = true,
+	-- memoryStoreService = if RunService:IsStudio() then Lyra.MockMemoryStoreService.new() else nil,
+	-- dataStoreService = if RunService:IsStudio() then Lyra.MockDataStoreService.new() else nil,
 })
