@@ -198,14 +198,14 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 									end
 								end
 							end)
-							:finally(function()
-								if
-									self.owner == Players.LocalPlayer.Name
-									or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
-								then
-									network.Units.ApplyPendingHit:FireServer(target.guid)
-								end
-							end)
+							:await()
+
+						if
+							self.owner == Players.LocalPlayer.Name
+							or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
+						then
+							network.Units.ApplyPendingHit:FireServer(target.guid)
+						end
 					end
 				end,
 				onExit = function(next)

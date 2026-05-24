@@ -1,9 +1,9 @@
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
-local PromiseTyped = require("@game/ReplicatedStorage/Packages/PromiseTyped")
 local SMUnit = require("../units/server/unit")
 local SMUnits = require("../units/server/stateMachineUnit")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
+local draw = require("@game/ReplicatedStorage/src/core/shared/draw")
 local fonts = require("@game/ReplicatedStorage/src/core/client/ui/utils/fonts")
 local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
@@ -28,12 +28,31 @@ function Outpost.new(guid: string, root: Folder): Outpost
 	self.guid = guid
 	self.root = root
 
-	local spawns = root:FindFirstChild("Spawns") :: Folder
-	for _, spawn in spawns:GetChildren() do
-		spawn = spawn :: Part
-		local u = SMUnits:SpawnUnit(unitSpawnAttr.get(spawn) or "gunner", spawn.CFrame)
-		spawn.Parent = workspace.Camera
-	end
+	waitFor.Descendant(root, "Spawns"):andThen(function(spawns: Folder)
+		local batchReplicate = {}
+		for _, spawn in spawns:GetDescendants() do
+			if not spawn:IsA("Part") then
+				continue
+			end
+			spawn.Parent = workspace.Camera
+
+			table.insert(
+				batchReplicate,
+				SMUnits:SpawnUnit({
+					unitId = unitSpawnAttr.get(spawn) or "gunner",
+					position = spawn.CFrame,
+					replicate = false,
+				})
+			)
+
+			-- draw.text(
+			-- 	spawn.Position + Vector3.new(0, 10, 0),
+			-- 	`{unitSpawnAttr.get(spawn) or "attr missing"}`,
+			-- 	Color3.fromHex("#000000")
+			-- )
+		end
+		SMUnits:ReplicateUnits(batchReplicate)
+	end)
 
 	local env = root:FindFirstChild("Env") :: Folder
 	for _, p in env:GetDescendants() do

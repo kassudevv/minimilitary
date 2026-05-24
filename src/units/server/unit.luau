@@ -1,5 +1,4 @@
 local PathfindingService = game:GetService("PathfindingService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")

@@ -1,6 +1,7 @@
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local SMUnit = require("../server/unit")
+local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
@@ -86,11 +87,10 @@ function SMUnits.init(self: SMUnits)
 	end)
 
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
-		self:LoadAllUnitsForPlayer(plr)
+		self:ReplicateUnitsToPlayer(plr, TableUtil.Values(self.units))
 
 		local rand = { "gunner", "gunner", "gunner", "juggernaut", "apache" }
-		-- local rand =
-		-- 	{ "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
+		-- local rand = { "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
 		for i = 1, 8 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
@@ -98,42 +98,61 @@ function SMUnits.init(self: SMUnits)
 		end
 
 		local account = accountStore.getAccount(plr.Name)
-
 		if account then
-			local newUnits = {}
+			local batchReplicate = {}
+			local char = plr.Character or plr.CharacterAdded:Wait()
 			for guid, uData in account.units do
-				local unitDef = constants.getUnit(uData.unitId) :: types.Unit
-				local char = plr.Character or plr.CharacterAdded:Wait()
-				self.units[guid] = SMUnit.new(unitDef, plr, guid, char:GetPivot(), self.destroyCb)
-				table.insert(newUnits, self.units[guid])
+				table.insert(
+					batchReplicate,
+					self:SpawnUnit({
+						guid = guid,
+						unitId = uData.unitId,
+						position = char:GetPivot(),
+						replicate = false,
+						owner = plr,
+					})
+				)
 			end
-			self:ReplicateNewUnits(newUnits)
+			self:ReplicateUnits(batchReplicate)
 		end
 	end)
 end
 
-function SMUnits.SpawnUnit(self: SMUnits, unitId: string, position: CFrame): SMUnit.SMUnit
-	local guid = HttpService:GenerateGUID(false)
-	local unitDef = constants.getUnit(unitId) :: types.Unit
-	self.units[guid] = SMUnit.new(unitDef, nil, guid, position, self.destroyCb)
-	network.Units.LoadUnits:FireAllClients({ self.units[guid]:snapshot() })
+function SMUnits.SpawnUnit(
+	self: SMUnits,
+	options: {
+		guid: string?,
+		owner: Player?,
+		unitId: string,
+		position: CFrame,
+		replicate: boolean,
+	}
+): SMUnit.SMUnit
+	local guid = options.guid or HttpService:GenerateGUID(false)
+
+	local unitDef = constants.getUnit(options.unitId) :: types.Unit
+	self.units[guid] = SMUnit.new(unitDef, options.owner, guid, options.position, self.destroyCb)
+
+	if options.replicate then
+		network.Units.LoadUnits:FireAllClients({ self.units[guid]:snapshot() })
+	end
+
 	return self.units[guid]
 end
 
-function SMUnits.ReplicateNewUnits(self: SMUnits, units: { SMUnit.SMUnit })
-	local loadQueue = {}
-	for _, u in self.units do
-		table.insert(loadQueue, u:snapshot())
-	end
-	network.Units.LoadUnits:FireAllClients(loadQueue)
+function SMUnits.ReplicateUnits(self: SMUnits, units: { SMUnit.SMUnit })
+	network.Units.LoadUnits:FireAllClients(TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
+		return u:snapshot()
+	end))
 end
 
-function SMUnits.LoadAllUnitsForPlayer(self: SMUnits, plr: Player)
-	local loadQueue = {}
-	for _, u in self.units do
-		table.insert(loadQueue, u:snapshot())
-	end
-	network.Units.LoadUnits:FireClient(plr, loadQueue)
+function SMUnits.ReplicateUnitsToPlayer(self: SMUnits, plr: Player, units: { SMUnit.SMUnit })
+	network.Units.LoadUnits:FireClient(
+		plr,
+		TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
+			return u:snapshot()
+		end)
+	)
 end
 
 type SMUnits = typeof(SMUnits) & {

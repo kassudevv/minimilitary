@@ -48,7 +48,11 @@ local accountTemplate: Account = {
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b684"] = { unitId = "tiger1", assignedSquad = 1 },
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b683"] = { unitId = "tiger1", assignedSquad = 1 },
 	},
-	items = {},
+	items = {
+		["1"] = { amount = 6, itemId = "wheat" },
+		["2"] = { amount = 1, itemId = "wheat_farm" },
+		["43"] = { amount = 3, itemId = "housing1" },
+	},
 }
 
 return {

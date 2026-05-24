@@ -17,10 +17,12 @@ local function sellItem(player: Player, guid: string)
 		end
 
 		local info = items.getItem(item.itemId)
-		if info.type == "Crop" then
-			local infoData = info.data :: items.ItemCropData
-			print(infoData)
+		if info.type ~= "Crop" then
+			return false
 		end
+
+		local data = info.data :: items.ItemCropData
+		print("Selling ", item.itemId, item.amount)
 
 		return objects.join(account, {
 			items = objects.delete(account.items, guid),

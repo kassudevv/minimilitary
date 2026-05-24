@@ -1,6 +1,7 @@
 local Outposts = require("../outposts/server")
 local Plots = require("../plots/server")
 local SMUnits = require("../units/server/stateMachineUnit")
+local rng = require("@self/rng")
 Plots:init()
 SMUnits:init()
 Outposts:init()
