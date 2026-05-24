@@ -23,7 +23,6 @@ local getRaycastParams = function(): RaycastParams
 	local plate = plots.plot.snapshot.template:WaitForChild("BuildPlate")
 	if plate then
 		nParams.FilterDescendantsInstances = { plate }
-		print("found")
 	end
 
 	paramsCache = nParams
@@ -62,6 +61,7 @@ function Building.init(self: Building)
 
 			self.janitor:Add(previewTarget:onChange(function(value, dt)
 				previewProp:PivotTo(value)
+				print("Pivotting preview")
 			end))
 
 			self.janitor:Add(RunService.Heartbeat:Connect(function()
@@ -86,7 +86,7 @@ function Building.init(self: Building)
 
 					for _, c in previewProp:GetDescendants() do
 						if c:IsA("BasePart") then
-							c.Transparency = isValidPlacement and 0 or 0.8
+							c.Transparency = isValidPlacement and 0.5 or 0.8
 						end
 					end
 				end

@@ -9,7 +9,7 @@ local unitsById: { [string]: Unit } = {
 		name = "Gunner",
 		model = ReplicatedStorage.NPCs.Gunner,
 
-		maxHealth = 60,
+		maxHealth = 120,
 		damage = 6,
 		range = 64,
 
@@ -23,22 +23,22 @@ local unitsById: { [string]: Unit } = {
 		name = "Juggernaut",
 		model = ReplicatedStorage.NPCs.Juggernaut,
 
-		maxHealth = 5000,
-		damage = 12,
+		maxHealth = 240,
+		damage = 5,
 		range = 64,
 
 		speed = 10,
 		scale = 1,
-		firerate = 16,
+		firerate = 8,
 
 		boundsRadius = 3,
 	},
 	abrams = {
-		name = "Tiger I Tank",
+		name = "Abrams Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankAbrams,
-		maxHealth = 100,
-		damage = 50,
+		maxHealth = 960,
+		damage = 96,
 		range = 58,
 		speed = 10,
 		scale = 1.8,
@@ -89,12 +89,12 @@ local unitsById: { [string]: Unit } = {
 		name = "AH-64 Apache",
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.Apache,
-		maxHealth = 200,
-		damage = 100,
+		maxHealth = 2048,
+		damage = 120,
 		range = 72,
 		speed = 14,
 		scale = 1.6,
-		firerate = 0.25,
+		firerate = 1,
 		boundsRadius = 8,
 		attackOverride = "helicopter_missiles",
 		movementMode = "flying",
@@ -116,7 +116,7 @@ local unitsById: { [string]: Unit } = {
 
 for _, u in unitsById do
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
-	u.speed = 50
+	u.speed *= 1.3
 end
 
 local function getUnit(itemId: string): Unit?

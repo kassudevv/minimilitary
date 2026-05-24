@@ -63,6 +63,7 @@ function Plot.loadTemplate(self: Plot)
 	self.template = Workspace.Template:Clone() :: Model
 	self.template:PivotTo(self.plotSpawn.CFrame)
 	self.template.Parent = workspace
+	self.template.Name = `template_{self.index}`
 end
 
 function Plot.reset(self: Plot)
@@ -98,7 +99,7 @@ function Plot.loadState(self: Plot, plr: Player)
 				local lockedTile = Workspace.LockedTile:Clone() :: Model
 				local cf = self.tileGrid:localToWorld(col, row)
 				lockedTile:PivotTo(CFrame.new(cf.X, cf.Y - 0.5, cf.Z) * cf.Rotation)
-				lockedTile.Parent = Workspace
+				lockedTile.Parent = self.template:FindFirstChild("Misc")
 				self.area:lock(col, row, lockedTile)
 			end
 		end
@@ -108,38 +109,6 @@ function Plot.loadState(self: Plot, plr: Player)
 			self.area:unlock(t.x, t.y)
 		end
 	end
-
-	-- local p, id = accounts.addBuilding(plr, {
-	-- 	x = 1,
-	-- 	y = 1,
-	-- 	rot = 4,
-	-- 	meta = {},
-	-- })
-	-- p:await()
-
-	-- task.spawn(function()
-	-- 	while true do
-	-- 		local data = accounts.getBuilding(plr, id)
-	-- 		if data then
-	-- 			accounts.setBuildingMeta(plr, id, "PendingCash", (data.meta.PendingCash or 0) + 100)
-	-- 		end
-	-- 		task.wait(1)
-	-- 	end
-	-- end)
-
-	-- p:andThen(function(res)
-	-- 	-- print("Added building with id: ", id)
-
-	-- 	task.spawn(function()
-	-- 		while true do
-	-- 			local data = accounts.getBuilding(plr, id)
-	-- 			if data then
-	-- 				accounts.setBuildingMeta(plr, id, "PendingCash", (data.meta.PendingCash or 0) + 100)
-	-- 			end
-	-- 			task.wait(1)
-	-- 		end
-	-- 	end)
-	-- end)
 end
 
 function Plot.snapshot(self: Plot): types.PlotSnapshot

@@ -1,5 +1,6 @@
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
+local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -9,6 +10,7 @@ local Promise = require("../../../Packages/PromiseTyped")
 local TableUtil = require("../../../Packages/TableUtil")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
+local flags = require("./flags")
 local network = require("../../core/shared/network")
 local particles = require("./particles")
 local projectiles = require("./projectiles")
@@ -35,6 +37,9 @@ type SMUnitData = {
 	loadedAnims: { [string]: Animation },
 	loadedTracks: { [string]: AnimationTrack },
 	cache: { [string]: any },
+
+	health: number,
+	healthBarGui: BillboardGui,
 }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
@@ -44,6 +49,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.def = def
 	self.guid = snapshot.guid
 	self.owner = snapshot.owner
+	self.health = def.maxHealth
 	self.lastProjectileTs = 0
 	self.cache = {}
 	self.projectile = def.attackOverride and projectiles[def.attackOverride] or projectiles.default
@@ -69,7 +75,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						)
 					end
 					self.model.Parent = Lighting
-					gravestone.Parent = Workspace.Terrain
+					gravestone.Parent = Workspace.Camera
 					self.stateMachine.data.gravestone = gravestone
 
 					if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
@@ -133,7 +139,8 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				end,
 				tick = function(dt)
 					local target = self.stateMachine.data.target :: SMUnit
-					local distance = (self.model:GetPivot().Position - target.model:GetPivot().Position).Magnitude
+					local distance =
+						unitRaycast.getPlanarDistance(self.model:GetPivot().Position, target.model:GetPivot().Position)
 					if target.stateMachine.state == "dead" or (distance > self.def.range) then
 						self.stateMachine:transition("idle" :: stateMachine.State, {})
 						return
@@ -228,6 +235,26 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.model.Parent = Workspace.NPCs
 	self.stateMachine:transition("idle", {})
 
+	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
+	self.healthBarGui.Parent = self.model.PrimaryPart
+
+	task.spawn(function()
+		local code = "FI"
+
+		if self.owner ~= "pve" then
+			local result, nCode =
+				pcall(LocalizationService.GetCountryRegionForPlayerAsync, LocalizationService, Players.LocalPlayer)
+			if result then
+				code = nCode
+			end
+		end
+
+		local img = (flags.get(code) or flags.flags.US).Flag
+
+		local il = (self.healthBarGui:FindFirstChild("Flag") :: Frame):FindFirstChild("ImageLabel") :: ImageLabel
+		il.Image = `rbxassetid://{img}`
+	end)
+
 	task.defer(function()
 		for _, p in self.model:GetDescendants() do
 			if p:IsA("BasePart") then
@@ -247,6 +274,12 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	end)
 
 	return self
+end
+
+function SMUnit.setHealth(self: SMUnit, amt: number)
+	self.health = amt
+	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
+	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
 end
 
 function SMUnit.faceTarget(self: SMUnit, target: Vector3)
@@ -318,6 +351,13 @@ function SMUnits.init(self: SMUnits)
 	RunService.Heartbeat:Connect(function(dt)
 		for _, u in self.units do
 			u.stateMachine:tick(dt)
+		end
+	end)
+
+	network.Units.ReplicateHealth.OnClientEvent:Connect(function(guid: string, amt: number)
+		local u = self.units[guid]
+		if u then
+			u:setHealth(amt)
 		end
 	end)
 

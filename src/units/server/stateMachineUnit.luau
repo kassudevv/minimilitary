@@ -3,10 +3,10 @@ local RunService = game:GetService("RunService")
 local SMUnit = require("../server/unit")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")
-local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local spatialGrid = require("./spatialGrid")
+local targeting = require("./targeting")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
@@ -31,7 +31,7 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 	local lastTick = 0
-	local tickRate = 1 / 2
+	local tickRate = 1 / 10
 	RunService.Heartbeat:Connect(function(dt)
 		if (os.clock() - lastTick) < tickRate then
 			return
@@ -41,83 +41,7 @@ function SMUnits.init(self: SMUnits)
 		self.targetGrid:rebuild(self.units)
 
 		for _, u in self.units do
-			if u.stateMachine.state ~= "idle" then
-				continue
-			end
-
-			local attackRange = u.def.range
-			local pveTargetRange = attackRange * 1.025
-			local targetRange = attackRange * 1.3
-
-			local nearest, nearestDist = nil, math.huge
-			local nearestWithLoS, nearestDistWithLoS = nil, math.huge
-
-			self.targetGrid:forEachEnemyInRange(u, targetRange, function(target, distSq)
-				local dist = math.sqrt(distSq)
-
-				if dist < nearestDist and target.stateMachine.state ~= "dead" then
-					nearest = target
-					nearestDist = dist
-
-					if u:hasLineOfSight(nearest) then
-						nearestWithLoS = target
-						nearestDistWithLoS = dist
-					end
-				end
-			end)
-
-			if nearestWithLoS then
-				if nearestDistWithLoS <= attackRange then
-					u:target(nearestWithLoS)
-					continue
-				end
-
-				if nearestDistWithLoS <= targetRange then
-					local closest = unitRaycast.closestPointOnCircle(
-						nearestWithLoS.pawn.Position,
-						attackRange * math.random(50, 90) * 0.01,
-						u.pawn.Position
-					)
-					u:move(closest)
-					continue
-				end
-			end
-
-			if nearest and nearestDist <= attackRange then
-				u:target(nearest)
-				continue
-			end
-
-			if nearest and nearestDist <= targetRange then
-				if
-					(u.owner ~= "pve" and nearest.owner == "pve")
-					or (u.owner == "pve" and nearestDist <= pveTargetRange)
-				then
-					if u.owner == "pve" and not u:hasLineOfSight(nearest) then
-						continue
-					end
-
-					if u.def.movementMode == "flying" then
-						local closest = unitRaycast.closestPointOnCircle(
-							nearest.pawn.Position,
-							attackRange * math.random(50, 90) * 0.01,
-							u.pawn.Position
-						)
-						u:move(closest)
-						continue
-					end
-
-					local closest = unitRaycast.closestPointOnCircleWithLos(
-						nearest.pawn.Position,
-						attackRange * math.random(50, 90) * 0.01,
-						u.pawn.Position
-					)
-
-					if closest then
-						u:move(closest)
-					end
-				end
-			end
+			targeting.tickUnit(u, self.targetGrid)
 		end
 	end)
 
@@ -164,9 +88,10 @@ function SMUnits.init(self: SMUnits)
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
 		self:LoadAllUnitsForPlayer(plr)
 
-		local rand =
-			{ "gunner", "gunner", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 1 do
+		local rand = { "gunner", "gunner", "gunner", "juggernaut", "apache" }
+		-- local rand =
+		-- 	{ "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
+		for i = 1, 8 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })

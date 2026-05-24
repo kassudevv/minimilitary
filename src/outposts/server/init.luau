@@ -1,8 +1,11 @@
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
+local PromiseTyped = require("@game/ReplicatedStorage/Packages/PromiseTyped")
 local SMUnit = require("../units/server/unit")
 local SMUnits = require("../units/server/stateMachineUnit")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
+local fonts = require("@game/ReplicatedStorage/src/core/client/ui/utils/fonts")
+local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
 local unitSpawnAttr = attribute<<string?>>("Unit", "gunner")
 
@@ -39,9 +42,27 @@ function Outpost.new(guid: string, root: Folder): Outpost
 		end
 	end
 
+	waitFor.Descendant(root, "ControlPointOverhead"):andThen(function(obj)
+		obj = obj :: BillboardGui
+
+		waitFor.Descendants(obj, { "Status", "Owner", "Object" }):andThen(function(objs: { TextLabel })
+			local status, owner, object = table.unpack(objs)
+
+			status.FontFace = fonts.inter.bold
+			owner.FontFace = fonts.inter.bold
+			object.FontFace = fonts.inter.bold
+
+			owner.Text = "UNCLAIMED"
+			object.Text = "Lv.1 Fortress"
+		end)
+	end)
+
+	waitFor.Descendants(root, { "FlagGui1", "FlagGui2" }):andThen(function(objs: { BillboardGui })
+		local flagGui1, flagGui2 = table.unpack(objs)
+	end)
+
 	return self
 end
-
 local Outposts = {}
 
 function Outposts.init(self: Outposts)

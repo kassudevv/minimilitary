@@ -366,6 +366,13 @@ local function closestPointOnCircleWithLos(center: Vector3, radius: number, poin
 	return bestPoint
 end
 
+function getPlanarDistance(a: Vector3, b: Vector3): number
+	local dx = a.X - b.X
+	local dz = a.Z - b.Z
+
+	return math.sqrt(dx * dx + dz * dz)
+end
+
 return {
 	initRaycastParams = initRaycastParams,
 	getRaycastParams = getRaycastParams,
@@ -380,4 +387,6 @@ return {
 	calculateGroundOffset = calculateGroundOffset,
 	closestPointOnCircle = closestPointOnCircle,
 	closestPointOnCircleWithLos = closestPointOnCircleWithLos,
+
+	getPlanarDistance = getPlanarDistance,
 }

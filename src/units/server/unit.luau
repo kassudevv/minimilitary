@@ -1,4 +1,5 @@
 local PathfindingService = game:GetService("PathfindingService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
@@ -20,6 +21,8 @@ type SMUnitData = {
 
 	health: number,
 	damageQueue: { number },
+	lastMoveInterruptTs: number,
+	isThinking: boolean,
 }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
@@ -32,6 +35,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 
 	self.health = def.maxHealth
 	self.damageQueue = {}
+	self.lastMoveInterruptTs = 0
 
 	self.stateMachine = stateMachine.new({
 		state = "idle",
@@ -77,7 +81,8 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 				end,
 				tick = function(dt)
 					local target = self.stateMachine.data.target
-					local distance = (self.pawn.Position - target.pawn.Position).Magnitude
+
+					local distance = unitRaycast.getPlanarDistance(self.pawn.Position, target.pawn.Position)
 					if target.stateMachine.state == "dead" or (distance > self.def.range) then
 						self:replicatedTransition("idle" :: stateMachine.State, {})
 						return
@@ -108,7 +113,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 						self.lastProjectileTs = self.stateMachine.data.start
 						self.stateMachine.data.isReadyToFire = false
 
-						target:addToDamageQueue(self.def.damage * (self.owner == "pve" and 0.001 or 1))
+						target:addToDamageQueue(self.def.damage * (self.owner == "pve" and 0.2 or 1))
 					end
 				end,
 				onExit = function(next) end,
@@ -121,7 +126,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 
 	self.pathfinder = PathfindingService:CreatePath({
 		AgentRadius = 5,
-		AgentHeight = 5,
+		AgentHeight = 1,
 		AgentCanJump = false,
 		AgentMaxSlope = 32,
 		WaypointSpacing = 8,
@@ -147,6 +152,7 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 		return
 	end
 
+	self.isThinking = true
 	self:replicatedTransition("idle")
 
 	self.pathfinder:ComputeAsync(self.pawn.Position, target)
@@ -155,19 +161,24 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 	end
 
 	local wps: { Vector3 } = {}
-	local waypoints = self.pathfinder:GetWaypoints()
-	for _, wp in waypoints do
-		table.insert(wps, Vector3.new(wp.Position.X, wp.Position.Y, wp.Position.Z))
-	end
+	if self.def.movementMode == "flying" then
+		table.insert(wps, self.pawn.Position)
+		table.insert(wps, target)
+	else
+		local waypoints = self.pathfinder:GetWaypoints()
+		for _, wp in waypoints do
+			table.insert(wps, Vector3.new(wp.Position.X, wp.Position.Y, wp.Position.Z))
+		end
 
-	for i, wp in wps do
-		local params = unitRaycast.getRaycastParams()
-		local rcResult = Workspace:Raycast(wp + Vector3.new(0, 50, 0), -Vector3.yAxis * 100, params)
-		if rcResult then
-			wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
+		for i, wp in wps do
+			local params = unitRaycast.getRaycastParams()
+			local rcResult = Workspace:Raycast(wp + Vector3.new(0, 50, 0), -Vector3.yAxis * 100, params)
+			if rcResult then
+				wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
+			end
 		end
 	end
-
+	self.isThinking = false
 	self:replicatedTransition("moving", {
 		waypoints = encoder.encodeWaypoints(wps),
 		totalLength = unitRaycast.getPathLength(wps),
@@ -177,11 +188,18 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 end
 
 function SMUnit.hasLineOfSight(self: SMUnit, target: SMUnit): boolean
+	if
+		table.find({ "helicopter", "plane" }, self.def.type or "troop")
+		or table.find({ "helicopter", "plane" }, target.def.type or "troop")
+	then
+		return true
+	end
+
 	local from = self.pawn.Position + Vector3.new(0, 2, 0)
 	local to = target.pawn.Position + Vector3.new(0, 2, 0)
 	local delta = to - from
 
-	if delta.Magnitude < 0.001 then
+	if delta.Magnitude < 1 then
 		return true
 	end
 
@@ -215,8 +233,16 @@ function SMUnit.damage(self: SMUnit, amt: number)
 	end
 
 	self.health -= amt
+	network.Units.ReplicateHealth:FireAllClients(self.guid, self.health)
+
 	if self.health <= 0 then
 		self.replicatedTransition(self, "dead", {})
+		return
+	end
+
+	if self.stateMachine.state == "moving" and os.clock() - self.lastMoveInterruptTs > 3 then
+		self.lastMoveInterruptTs = os.clock()
+		self.replicatedTransition(self, "idle", {})
 	end
 end
 

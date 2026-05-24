@@ -42,7 +42,7 @@ local accountTemplate: Account = {
 	units = {
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b688"] = { unitId = "gunner", assignedSquad = 1 },
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b689"] = { unitId = "gunner", assignedSquad = 1 },
-		["774b9d34-083d-4b93-b3e7-755780d3b687"] = { unitId = "tiger1", assignedSquad = 1 },
+		-- ["774b9d34-083d-4b93-b3e7-755780d3b687"] = { unitId = "tiger1", assignedSquad = 1 },
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b686"] = { unitId = "tiger1", assignedSquad = 1 },
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b685"] = { unitId = "tiger1", assignedSquad = 1 },
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b684"] = { unitId = "tiger1", assignedSquad = 1 },

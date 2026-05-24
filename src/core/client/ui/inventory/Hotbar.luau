@@ -58,7 +58,7 @@ return function()
 					BackgroundTransparency = 1,
 					LayoutOrder = 69,
 					Activated = function()
-						-- plotStore.buildingModeEnabled(not plotStore.buildingModeEnabled())
+						plotStore.buildingModeEnabled(not plotStore.buildingModeEnabled())
 					end,
 				}),
 			}),
