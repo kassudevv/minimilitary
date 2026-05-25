@@ -1,3 +1,3 @@
 return {
-	PERFORMANCE_MODE = true,
+	PERFORMANCE_MODE = false,
 }

@@ -345,6 +345,39 @@ local function calculateGroundOffset(model: Model, scale: number): number
 	return pivotY - bottomY
 end
 
+export type Path = {
+	segments: { { a: Vector3, b: Vector3, dir: Vector3, length: number, cumulative: number } },
+	totalLength: number,
+}
+
+local function buildPathData(waypoints: { Vector3 }): Path
+	local segments = {}
+	local total = 0
+
+	for i = 2, #waypoints do
+		local a: Vector3 = waypoints[i - 1]
+		local b: Vector3 = waypoints[i]
+
+		local delta = (b - a) :: Vector3
+		local length = delta.Magnitude
+
+		segments[i - 1] = {
+			a = a,
+			b = b,
+			dir = delta / length,
+			length = length,
+			cumulative = total,
+		}
+
+		total += length
+	end
+
+	return {
+		segments = segments,
+		totalLength = total,
+	}
+end
+
 local function setUnitPositionWithOrientationFromSampledPath(
 	pawn: BasePart | Model,
 	waypoints: { Vector3 },
@@ -353,29 +386,29 @@ local function setUnitPositionWithOrientationFromSampledPath(
 )
 	debug.profilebegin(`SetUnitPosition-{RunService:IsServer() and "Server" or "Client"}`)
 
-	local offset: number = pOffset or 1.7
-	local pos = samplePath(waypoints, distance)
+	-- local offset: number = pOffset or 1.7
+	-- local pos = samplePath(waypoints, distance)
 
-	local pawnPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
-	local nextPos = samplePath(waypoints, (distance + 0.05))
-	local dir2 = nextPos - pos
+	-- local pawnPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
+	-- local nextPos = samplePath(waypoints, (distance + 0.05))
+	-- local dir2 = nextPos - pos
 
-	if dir2.Magnitude > 0 then
-		local dir3 = Vector3.new(dir2.X, 0, dir2.Z).Unit
+	-- if dir2.Magnitude > 0 then
+	-- 	local dir3 = Vector3.new(dir2.X, 0, dir2.Z).Unit
 
-		if pawn:IsA("Model") then
-			pawn:PivotTo(CFrame.lookAt(pawnPos, pawnPos + dir3))
-		else
-			pawn.CFrame = CFrame.lookAt(pawnPos, pawnPos + dir3)
-		end
-	else
-		if pawn:IsA("Model") and pawn.PrimaryPart then
-			local rot = pawn.PrimaryPart.CFrame.Rotation
-			pawn:PivotTo(CFrame.new(pawnPos) * rot)
-		else
-			pawn.Position = pawnPos
-		end
-	end
+	-- 	if pawn:IsA("Model") then
+	-- 		pawn:PivotTo(CFrame.lookAt(pawnPos, pawnPos + dir3))
+	-- 	else
+	-- 		pawn.CFrame = CFrame.lookAt(pawnPos, pawnPos + dir3)
+	-- 	end
+	-- else
+	-- 	if pawn:IsA("Model") and pawn.PrimaryPart then
+	-- 		local rot = pawn.PrimaryPart.CFrame.Rotation
+	-- 		pawn:PivotTo(CFrame.new(pawnPos) * rot)
+	-- 	else
+	-- 		pawn.Position = pawnPos
+	-- 	end
+	-- end
 
 	debug.profileend()
 end
@@ -471,4 +504,5 @@ return {
 	closestPointOnCircleWithLos = closestPointOnCircleWithLos,
 
 	getPlanarDistance = getPlanarDistance,
+	buildPathData = buildPathData,
 }

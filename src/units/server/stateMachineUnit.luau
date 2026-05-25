@@ -1,7 +1,9 @@
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local SMUnit = require("../server/unit")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
+local TaskQueue = require("@game/ReplicatedStorage/src/core/shared/TaskQueue")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
@@ -28,9 +30,11 @@ function SMUnits.init(self: SMUnits)
 
 	--state machine
 	RunService.Heartbeat:Connect(function(dt)
+		debug.profilebegin("SERVER-TICK")
 		for _, u in self.units do
 			u.stateMachine:tick(dt)
 		end
+		debug.profileend()
 	end)
 	local lastTick = 0
 	local tickRate = 1 / 10
@@ -62,40 +66,44 @@ function SMUnits.init(self: SMUnits)
 		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 4)
 
 		for i, u in groundUnits do
-			u:move(groundFormation[i])
+			task.spawn(function()
+				u:move(groundFormation[i])
+			end)
 		end
 
 		for i, u in flyingUnits do
-			u:move(flyingFormation[i])
+			task.spawn(function()
+				u:move(flyingFormation[i])
+			end)
 		end
 	end)
 
-	network.Units.ApplyPendingHit.OnServerEvent:Connect(function(plr: Player, target: number)
+	network.Units.ApplyPendingHit.OnServerEvent:Connect(function(plr: Player, target: number, amt: number)
 		for _, u in self.units do
-			if u.id == target then
-				local dmg = table.remove(u.damageQueue, 1)
-				if not dmg then
-					return
-				end
-				u:damage(dmg)
-				return
+			if u.id ~= target then
+				continue
 			end
+
+			u:applyFromDamageQueue(amt)
+
+			return
 		end
 	end)
 
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
 		self:ReplicateUnitsToPlayer(plr, TableUtil.Values(self.units))
 
-		local rand = string.lower(plr.Name) == "player1" and { "abrams", "tiger1" } or { "apache" }
+		-- local rand = string.lower(plr.Name) == "player1" and { "abrams", "tiger1" } or { "apache" }
 		-- local rand = { "gunner", "gunner", "gunner", "juggernaut", "gunner", "tiger1", "abrams" }
-		-- local rand = { "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 300 do
+		local rand =
+			{ "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
+		for i = 1, 1000 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
 		end
 
-		accounts.addUnit(plr, { assignedSquad = 1, unitId = "apache" })
+		-- accounts.addUnit(plr, { ass gnedSquad = 1, unitId = "apache" })
 
 		local account = accountStore.getAccount(plr.Name)
 		if account then

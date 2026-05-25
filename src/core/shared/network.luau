@@ -26,7 +26,7 @@ return {
 		RequestPath = RE("C") :: RE<Vector3>, -- request unit pathfinding target
 		MoveUnit = RE("D") :: RE<buffer, any>, -- replicate unit moveTo waypoints
 
-		ApplyPendingHit = RE("E") :: RE<number>,
+		ApplyPendingHit = RE("E") :: RE<number, number>,
 
 		ReplicateSM = RE("F") :: RE<buffer, { [string]: any }>,
 		ReplicateHealth = RE("G") :: RE<buffer>,

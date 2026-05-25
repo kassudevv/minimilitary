@@ -130,11 +130,11 @@ local Projectiles: { [string]: (any, Vector3) -> Promise.Class } = {
 			t:onComplete(function()
 				resolve()
 
-				particles.emit({
-					vfx = "MissileImpactBig",
-					position = target,
-					spread = 3,
-				})
+				-- particles.emit({
+				-- 	vfx = "MissileImpactBig",
+				-- 	position = target,
+				-- 	spread = 3,
+				-- })
 
 				missile.Transparency = 1
 

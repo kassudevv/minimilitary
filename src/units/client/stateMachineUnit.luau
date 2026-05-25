@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local ClientConfig = require("../../core/client/ClientConfig")
 local Promise = require("../../../Packages/PromiseTyped")
 local TableUtil = require("../../../Packages/TableUtil")
+local TaskQueue = require("../../core/shared/TaskQueue")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
 local flags = require("./flags")
@@ -41,7 +42,50 @@ type SMUnitData = {
 
 	health: number,
 	healthBarGui: BillboardGui,
+
+	LOD: UnitLOD,
 }
+
+local bulkMoveQueue: any = TaskQueue.new(function(moves: { any })
+	local parts = {}
+	local cframes = {}
+	for _, m in moves do
+		table.insert(parts, m[1])
+		table.insert(cframes, m[2])
+	end
+	Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+end)
+
+type UnitLOD = "HOT" | "WARM" | "COLD"
+local UnitLODPoints = {
+	HOT_ENTER = 250 ^ 2,
+	HOT_EXIT = 350 ^ 2,
+
+	WARM_ENTER = 800 ^ 2,
+	WARM_EXIT = 1000 ^ 2,
+}
+local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
+	local delta = unitPos - cameraPos
+	local distSq = delta:Dot(delta)
+
+	if currentLod == "HOT" then
+		if distSq > UnitLODPoints.HOT_EXIT then
+			return "WARM"
+		end
+	elseif currentLod == "WARM" then
+		if distSq < UnitLODPoints.HOT_ENTER then
+			return "HOT"
+		elseif distSq > UnitLODPoints.WARM_EXIT then
+			return "COLD"
+		end
+	elseif currentLod == "COLD" then
+		if distSq < UnitLODPoints.WARM_ENTER then
+			return "WARM"
+		end
+	end
+
+	return currentLod
+end
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
 function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
@@ -82,15 +126,11 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					self.stateMachine.data.gravestone = gravestone
 
 					if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
-						local vfx = ReplicatedStorage.VFX.MissileImpactBig
-						local expl = vfx:Clone()
-						expl.Position = self.model:GetPivot().Position
-						expl.Parent = workspace.Terrain
-						for _, emitter in expl:GetChildren() do
-							emitter = emitter :: ParticleEmitter
-							emitter:Emit()
-						end
-						Debris:AddItem(expl, 3)
+						particles.emit({
+							vfx = "MissileImpactBig",
+							position = self.model:GetPivot().Position,
+							spread = 3,
+						})
 					end
 				end,
 				tick = function(dt)
@@ -110,29 +150,55 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 			moving = {
 				onEnter = function(prev)
 					self:playAnimation("RunAnim")
+
+					local state = self.stateMachine.data
+					state.segment = 1
+					state.distanceInSegment = 0
+					state.accum = 0
+					state.root = self.model.PrimaryPart
 				end,
 				tick = function(dt)
-					-- self.stateMachine.data.lastUpdate = self.stateMachine.data.lastUpdate or 0
-					-- if os.clock() - self.stateMachine.data.lastUpdate < 2 then
-					-- 	return
-					-- end
-					-- self.stateMachine.data.lastUpdate = os.clock()
+					local state = self.stateMachine.data
+					state.accum += dt
 
-					local startTime = self.stateMachine.data.startTime
-					local elapsed = os.clock() - startTime
-					local distance = math.max(elapsed * self.def.speed, 0)
-
-					unitRaycast.setUnitPositionWithOrientationFromSampledPath(
-						self.model,
-						self.stateMachine.data.waypoints,
-						distance,
-						(self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0)
-					)
-
-					if distance > self.stateMachine.data.totalLength then
-						local state: stateMachine.State = "idle"
-						self.stateMachine:transition(state, {})
+					local tickRate = if self.LOD == "HOT" then 0.0 elseif self.LOD == "WARM" then 1 / 2 else 1
+					if state.accum < tickRate then
+						return
 					end
+					local delta = state.accum
+					state.accum = 0
+
+					local path = state.path :: unitRaycast.Path
+					local seg = path.segments[self.stateMachine.data.segment]
+
+					if not seg then
+						self.stateMachine:transition("idle", {})
+						return
+					end
+
+					if not state.rotation then
+						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
+					end
+
+					self.stateMachine.data.distanceInSegment += self.def.speed * delta
+					while state.distanceInSegment > seg.length do
+						state.distanceInSegment -= seg.length
+						state.segment += 1
+
+						seg = path.segments[state.segment]
+						if not seg then
+							self.stateMachine:transition("idle", {})
+							return
+						end
+						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
+					end
+
+					local alpha = state.distanceInSegment / seg.length
+					local pos = seg.a:Lerp(seg.b, alpha)
+						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0), 0)
+
+					local cf = CFrame.new(pos) * state.rotation
+					bulkMoveQueue:Add({ state.root, cf })
 				end,
 				onExit = function(next)
 					self:stopAnimation("RunAnim")
@@ -184,12 +250,29 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 
 						self:faceTarget(targetPos)
 
-						local doProjectile = if ClientConfig.PERFORMANCE_MODE then math.random(1, 10) == 1 else true
-						if doProjectile then
+						local allowProjectile = self.LOD == "HOT"
+							and (not ClientConfig.PERFORMANCE_MODE or math.random(1, 3) == 1)
+
+						if allowProjectile then
 							self:projectile(targetPos):await()
 						end
 
-						if target.stateMachine.state ~= "dead" then
+						if
+							self.owner == Players.LocalPlayer.Name
+							or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
+						then
+							network.Units.ApplyPendingHit:FireServer(target.id, self.def.damage)
+						end
+
+						if self.LOD == "HOT" then
+							if table.find({ "tank", "plane", "helicopter" }, self.def.type or "troop") then
+								particles.emit({
+									vfx = "MissileImpact",
+									position = targetPos,
+									spread = 3,
+								})
+							end
+
 							-- target impact effect depending on target type
 							if table.find({ "troop" }, target.def.type or "troop") then
 								particles.emit({
@@ -205,22 +288,6 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 									spread = 3,
 								})
 							end
-
-							-- tank projectile explosion
-							if table.find({ "tank" }, self.def.type or "troop") then
-								particles.emit({
-									vfx = "MissileImpactBig",
-									position = targetPos,
-									spread = 3,
-								})
-							end
-						end
-
-						if
-							self.owner == Players.LocalPlayer.Name
-							or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
-						then
-							network.Units.ApplyPendingHit:FireServer(target.id)
 						end
 					end
 				end,
@@ -252,8 +319,10 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 96 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
+
+	self.LOD = "HOT"
 
 	task.spawn(function()
 		local code = "FI"
@@ -300,7 +369,9 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	self.health = amt
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
-	-- self.healthBarGui.MaxDistance = 256
+	if self.LOD == "HOT" then
+		self.healthBarGui.MaxDistance = 96
+	end
 end
 
 function SMUnit.faceTarget(self: SMUnit, target: Vector3)
@@ -375,37 +446,19 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	-- perf
-	-- local lastPerfTick = 0
-	-- RunService.Heartbeat:Connect(function(dt)
-	-- 	if os.clock() - lastPerfTick > 1 then
-	-- 		lastPerfTick = os.clock()
-	-- 		local char = Players.LocalPlayer.Character
-	-- 		if not char then
-	-- 			return
-	-- 		end
+	local lodCheckAccum = 0
+	RunService.Heartbeat:Connect(function(dt)
+		lodCheckAccum += dt
+		if lodCheckAccum < 1 / 4 then
+			return
+		end
+		lodCheckAccum = 0
 
-	-- 		local pos = char:GetPivot()
-	-- 		for _, u in self.units do
-	-- 			local dist = (u.model:GetPivot().Position - pos.Position).Magnitude
-	-- 			local shouldShow = dist < 100
-	-- 			if not shouldShow then
-	-- 				local animator = u.model:FindFirstChild("Animator", true) :: Animator
-	-- 				if animator then
-	-- 					for _, track in animator:GetPlayingAnimationTracks() do
-	-- 						track:Stop()
-	-- 					end
-	-- 				end
-	-- 			end
-	-- 			-- if not shouldShow and u.model.Parent ~= ReplicatedStorage then
-	-- 			-- 	u.model.Parent = ReplicatedStorage
-	-- 			-- elseif shouldShow and u.model.Parent == ReplicatedStorage then
-	-- 			-- 	u.model.Parent = Workspace.NPCs
-	-- 			-- end
-	-- 		end
-	-- 	end
-	-- end)
-	--
+		local to = Workspace.Camera.CFrame.Position
+		for _, u in self.units do
+			u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
+		end
+	end)
 
 	network.Units.ReplicateHealth.OnClientEvent:Connect(function(buf: buffer)
 		local values = encoder.decodeHealth(buf)
@@ -426,9 +479,10 @@ function SMUnits.init(self: SMUnits)
 			end
 
 			if values.state == "moving" then
-				data["startTime"] = os.clock()
-				data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
-				data["totalLength"] = unitRaycast.getPathLength(data["waypoints"])
+				data["path"] = unitRaycast.buildPathData(encoder.decodeWaypoints(data["waypoints"]))
+				-- data["startTime"] = os.clock()
+				-- data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
+				-- data["totalLength"] = unitRaycast.getPathLength(data["waypoints"])
 			end
 
 			if values.state == "targeting" then

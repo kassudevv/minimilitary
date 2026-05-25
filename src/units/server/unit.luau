@@ -1,5 +1,6 @@
 local PathfindingService = game:GetService("PathfindingService")
 local Workspace = game:GetService("Workspace")
+local TaskQueue = require("@game/ReplicatedStorage/src/core/shared/TaskQueue")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local index = require("@game/ReplicatedStorage/src/units/shared/index")
@@ -10,6 +11,16 @@ local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycas
 local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
 local guidAttr = attribute<<string?>>("UnitGuid", "")
+
+local bulkMoveQueue: any = TaskQueue.new(function(moves: { any })
+	local parts = {}
+	local cframes = {}
+	for _, m in moves do
+		table.insert(parts, m[1])
+		table.insert(cframes, m[2])
+	end
+	Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+end)
 
 local SMUnit = {}
 SMUnit.__index = SMUnit
@@ -25,7 +36,7 @@ type SMUnitData = {
 	lastProjectileTs: number,
 
 	health: number,
-	damageQueue: { number },
+	damageQueue: { [number]: number },
 	lastMoveInterruptTs: number,
 	isThinking: boolean,
 }
@@ -60,23 +71,52 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 				onExit = function(next) end,
 			},
 			moving = {
-				onEnter = function(prev) end,
-				tick = function(dt)
-					local startTime = self.stateMachine.data.startTime
-					local elapsed = os.clock() - startTime
-					local distance = math.max(elapsed * self.def.speed, 0)
+				onEnter = function(prev)
+					local state = self.stateMachine.data
+					state.segment = 1
+					state.distanceInSegment = 0
+					state.accum = 0
+				end,
+				tick = function(delta)
+					local state = self.stateMachine.data
 
-					unitRaycast.setUnitPositionWithOrientationFromSampledPath(
-						self.pawn,
-						self.stateMachine.data.waypoints,
-						distance,
-						(self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0)
-					)
+					-- state.accum += dt
+					-- if state.accum < 0.1 then
+					-- 	return
+					-- end
+					-- local delta = dt
+					-- state.accum = 0
 
-					if distance > self.stateMachine.data.totalLength then
-						local state: stateMachine.State = "idle"
-						self:replicatedTransition(state, {})
+					local path = state.path :: unitRaycast.Path
+					local seg = path.segments[self.stateMachine.data.segment]
+
+					if not seg then
+						self:replicatedTransition("idle" :: stateMachine.State, {})
+						return
 					end
+					if not state.rotation then
+						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
+					end
+
+					self.stateMachine.data.distanceInSegment += self.def.speed * delta
+					while state.distanceInSegment > seg.length do
+						state.distanceInSegment -= seg.length
+						state.segment += 1
+
+						seg = path.segments[state.segment]
+						if not seg then
+							self:replicatedTransition("idle" :: stateMachine.State, {})
+							return
+						end
+						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
+					end
+
+					local alpha = state.distanceInSegment / seg.length
+					local pos = seg.a:Lerp(seg.b, alpha)
+						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0), 0)
+
+					local cf = CFrame.new(pos) * state.rotation
+					bulkMoveQueue:Add({ self.pawn, cf })
 				end,
 				onExit = function(next) end,
 			},
@@ -204,9 +244,7 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 	self:replicatedTransition("moving", {
 		waypoints = encoder.encodeWaypoints(wps),
 	})
-	self.stateMachine.data.totalLength = unitRaycast.getPathLength(wps)
-	self.stateMachine.data.startTime = os.clock()
-	self.stateMachine.data.waypoints = wps
+	self.stateMachine.data.path = unitRaycast.buildPathData(wps)
 
 	self.isThinking = false
 end
@@ -273,8 +311,27 @@ function SMUnit.damage(self: SMUnit, amt: number)
 	end
 end
 
+local damageQueueIncr: number = 0
 function SMUnit.addToDamageQueue(self: SMUnit, amt: number)
-	table.insert(self.damageQueue, amt)
+	damageQueueIncr += 1
+	local id = damageQueueIncr
+	self.damageQueue[id] = amt
+
+	task.delay(5, function()
+		if self.damageQueue[id] then
+			self.damageQueue[id] = nil
+			self:damage(amt)
+		end
+	end)
+end
+function SMUnit.applyFromDamageQueue(self: SMUnit, amt: number)
+	for i, nxt in self.damageQueue do
+		if nxt == amt then
+			self.damageQueue[i] = nil
+			self:damage(amt)
+			return
+		end
+	end
 end
 
 function SMUnit.cleanup(self: SMUnit)

@@ -120,6 +120,7 @@ for _, u in unitsById do
 	-- u.speed *= 2
 	u.boundsRadius = 8
 	-- u.range *= 2
+	-- u.speed = 200
 end
 
 local function getUnit(itemId: string): Unit?
