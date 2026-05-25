@@ -100,32 +100,33 @@ function Outpost.new(guid: string, root: Folder): Outpost
 	end)
 
 	-- init capture circle
-	waitFor.Descendant(root, "Capture"):andThen(function(obj: Model)
+	waitFor.Descendant(root, "CaptureMesh"):andThen(function(obj: Part)
 		CollectionService:AddTag(obj, "NoUnitRaycast")
-		self.capturePoint = obj:GetPivot().Position
+		self.capturePoint = obj.Position
 	end)
 
 	-- load colliders and env parts
-	local env = root:FindFirstChild("Env") :: Folder
-	for _, p in env:GetDescendants() do
-		if not p:IsA("BasePart") then
-			continue
-		end
+	waitFor.Descendant(Workspace, "LineOfSightBlockers"):andThen(function(LOSBlockers: Folder)
+		local env = root:FindFirstChild("Env") :: Folder
+		for _, p in env:GetDescendants() do
+			if not p:IsA("BasePart") then
+				continue
+			end
 
-		p.Parent = Workspace.PVE:FindFirstChild("LineOfSightBlockers")
-		if p.Name == "Collider" then
-			p.Transparency = 1
-			table.insert(self.colliders, p)
+			p.Parent = LOSBlockers
+			if p.Name == "Collider" then
+				p.Transparency = 1
+				table.insert(self.colliders, p)
+			end
 		end
-	end
+	end)
 
 	-- load control stuff
 	local title = outpostTitleAttr.get(self.root)
 
-	waitFor.Descendants(self.root, { "Status", "Owner", "Object" }):andThen(function(objs: { TextLabel })
-		local status, owner, object = table.unpack(objs)
+	waitFor.Descendants(self.root, { "Owner", "Object" }):andThen(function(objs: { TextLabel })
+		local owner, object = table.unpack(objs)
 
-		status.FontFace = fonts.inter.bold
 		owner.FontFace = fonts.inter.bold
 		object.FontFace = fonts.inter.bold
 		object.Text = title or "Undefined"
@@ -139,9 +140,9 @@ end
 function Outpost.spawnUnits(self: Outpost)
 	local batchReplicate = {}
 	for _, spawner in self.spawners do
-		if math.random(1, 3) ~= 3 then
-			continue
-		end
+		-- if math.random(1, 3) ~= 3 then
+		-- 	continue
+		-- end
 		local unit = SMUnits:SpawnUnit({
 			unitId = unitSpawnAttr.get(spawner) or "gunner",
 			position = spawner.CFrame,
@@ -154,8 +155,6 @@ function Outpost.spawnUnits(self: Outpost)
 end
 
 local NPCOverlapParams = OverlapParams.new()
-NPCOverlapParams.FilterType = Enum.RaycastFilterType.Include
-NPCOverlapParams.FilterDescendantsInstances = { Workspace.Camera.NPCs }
 function Outpost.tick(self: Outpost, elapsed: number)
 	local pawns = Workspace:GetPartBoundsInRadius(self.capturePoint, 50, NPCOverlapParams)
 
@@ -239,8 +238,16 @@ local Outposts = {}
 function Outposts.init(self: Outposts)
 	self.outposts = {}
 
+	local Camera = Workspace:WaitForChild("Camera")
+	if Camera then
+		waitFor.Descendant(Camera, "NPCs"):andThen(function(NPCs: Folder)
+			NPCOverlapParams.FilterType = Enum.RaycastFilterType.Include
+			NPCOverlapParams.FilterDescendantsInstances = { NPCs }
+		end)
+	end
+
 	-- load outposts
-	local Outposts = Workspace.Outposts
+	local Outposts = Workspace:WaitForChild("Outposts")
 	for _, c in Outposts:GetChildren() do
 		local guid = HttpService:GenerateGUID(false)
 		self.outposts[guid] = Outpost.new(guid, c :: Folder)

@@ -63,7 +63,7 @@ local unitsById: { [string]: Unit } = {
 		name = "Tiger I Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.TankTiger1,
-		maxHealth = 100,
+		maxHealth = 480,
 		damage = 250,
 		range = 58,
 		speed = 10,
@@ -89,8 +89,8 @@ local unitsById: { [string]: Unit } = {
 		name = "AH-64 Apache",
 		type = "helicopter",
 		model = ReplicatedStorage.NPCs.Apache,
-		maxHealth = 2048,
-		damage = 120,
+		maxHealth = 960,
+		damage = 195,
 		range = 72,
 		speed = 14,
 		scale = 1.6,
@@ -117,7 +117,9 @@ local unitsById: { [string]: Unit } = {
 for _, u in unitsById do
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
 	-- u.speed *= 1.3
-	u.speed *= 2
+	-- u.speed *= 2
+	u.boundsRadius = 8
+	-- u.range *= 2
 end
 
 local function getUnit(itemId: string): Unit?

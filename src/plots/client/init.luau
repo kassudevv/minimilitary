@@ -24,6 +24,7 @@ function Plot.new(snapshot: types.PlotSnapshot): Plot
 
 	self.snapshot = snapshot
 
+	print(snapshot)
 	local gridStart = self.snapshot.template:WaitForChild("StartGrid") :: BasePart
 
 	self.buildGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_BUILD_SIZE)

@@ -7,6 +7,7 @@ local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local stateMachine = require("@game/ReplicatedStorage/src/units/shared/stateMachine")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
+local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
 local guidAttr = attribute<<string?>>("UnitGuid", "")
 
@@ -145,7 +146,13 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.pawn.Size = Vector3.new(1.5, 3, 1.5)
 	self.pawn.Color = Color3.fromHex("#ffaa00")
 	guidAttr.set(self.pawn, self.guid)
-	self.pawn.Parent = Workspace.Camera.NPCs
+
+	local Camera = Workspace:FindFirstChild("Camera")
+	if Camera then
+		waitFor.Descendant(Camera, "NPCs"):andThen(function(NPCs: Folder)
+			self.pawn.Parent = NPCs
+		end)
+	end
 
 	return self
 end
@@ -241,7 +248,10 @@ end
 
 function SMUnit.replicatedTransition(self: SMUnit, newState: stateMachine.State, data: { [string]: any })
 	self.stateMachine:transition(newState, data)
-	network.Units.ReplicateSM:FireAllClients(encoder.encodeSM(self.id, newState, data))
+
+	local encoded = encoder.encodeSM(self.id, newState)
+
+	network.Units.ReplicateSM:FireAllClients(encoded, data)
 end
 
 function SMUnit.damage(self: SMUnit, amt: number)

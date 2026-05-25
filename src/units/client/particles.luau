@@ -1,6 +1,7 @@
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local ClientConfig = require("../../core/client/ClientConfig")
 local attribute = require("../../accounts/shared/utils/attribute")
 
 local emitCountAttr = attribute<<number?>>("EmitCount", 1)
@@ -64,8 +65,7 @@ local function emit(data: ParticleData): Instance
 
 	for _, descendant in effect:GetDescendants() do
 		if descendant:IsA("ParticleEmitter") then
-			descendant:Emit(data.emitCount or emitCountAttr.get(descendant))
-			-- descendant:Emit(1)
+			descendant:Emit((ClientConfig.PERFORMANCE_MODE and 1) or (data.emitCount or emitCountAttr.get(descendant)))
 		end
 	end
 

@@ -6,12 +6,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local ClientConfig = require("../../core/client/ClientConfig")
 local Promise = require("../../../Packages/PromiseTyped")
 local TableUtil = require("../../../Packages/TableUtil")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
 local flags = require("./flags")
-local index = require("../shared/index")
 local network = require("../../core/shared/network")
 local particles = require("./particles")
 local projectiles = require("./projectiles")
@@ -112,6 +112,12 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					self:playAnimation("RunAnim")
 				end,
 				tick = function(dt)
+					-- self.stateMachine.data.lastUpdate = self.stateMachine.data.lastUpdate or 0
+					-- if os.clock() - self.stateMachine.data.lastUpdate < 2 then
+					-- 	return
+					-- end
+					-- self.stateMachine.data.lastUpdate = os.clock()
+
 					local startTime = self.stateMachine.data.startTime
 					local elapsed = os.clock() - startTime
 					local distance = math.max(elapsed * self.def.speed, 0)
@@ -177,36 +183,38 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						local targetPos = target.model:GetPivot().Position
 
 						self:faceTarget(targetPos)
-						self.projectile(self, targetPos)
-							:andThen(function()
-								if target.stateMachine.state ~= "dead" then
-									-- target impact effect depending on target type
-									if table.find({ "troop" }, target.def.type or "troop") then
-										particles.emit({
-											vfx = "Blood",
-											position = targetPos,
-											spread = 0.1,
-										})
-									end
-									if table.find({ "helicopter", "tank", "plane" }, target.def.type or "troop") then
-										particles.emit({
-											vfx = "BulletImpact",
-											position = targetPos,
-											spread = 3,
-										})
-									end
 
-									-- tank projectile explosion
-									if table.find({ "tank" }, self.def.type or "troop") then
-										particles.emit({
-											vfx = "MissileImpactBig",
-											position = targetPos,
-											spread = 3,
-										})
-									end
-								end
-							end)
-							:await()
+						local doProjectile = if ClientConfig.PERFORMANCE_MODE then math.random(1, 10) == 1 else true
+						if doProjectile then
+							self:projectile(targetPos):await()
+						end
+
+						if target.stateMachine.state ~= "dead" then
+							-- target impact effect depending on target type
+							if table.find({ "troop" }, target.def.type or "troop") then
+								particles.emit({
+									vfx = "Blood",
+									position = targetPos,
+									spread = 0.1,
+								})
+							end
+							if table.find({ "helicopter", "tank", "plane" }, target.def.type or "troop") then
+								particles.emit({
+									vfx = "BulletImpact",
+									position = targetPos,
+									spread = 3,
+								})
+							end
+
+							-- tank projectile explosion
+							if table.find({ "tank" }, self.def.type or "troop") then
+								particles.emit({
+									vfx = "MissileImpactBig",
+									position = targetPos,
+									spread = 3,
+								})
+							end
+						end
 
 						if
 							self.owner == Players.LocalPlayer.Name
@@ -244,7 +252,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 256 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	task.spawn(function()
@@ -292,7 +300,7 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	self.health = amt
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
-	self.healthBarGui.MaxDistance = 256
+	-- self.healthBarGui.MaxDistance = 256
 end
 
 function SMUnit.faceTarget(self: SMUnit, target: Vector3)
@@ -367,6 +375,38 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
+	-- perf
+	-- local lastPerfTick = 0
+	-- RunService.Heartbeat:Connect(function(dt)
+	-- 	if os.clock() - lastPerfTick > 1 then
+	-- 		lastPerfTick = os.clock()
+	-- 		local char = Players.LocalPlayer.Character
+	-- 		if not char then
+	-- 			return
+	-- 		end
+
+	-- 		local pos = char:GetPivot()
+	-- 		for _, u in self.units do
+	-- 			local dist = (u.model:GetPivot().Position - pos.Position).Magnitude
+	-- 			local shouldShow = dist < 100
+	-- 			if not shouldShow then
+	-- 				local animator = u.model:FindFirstChild("Animator", true) :: Animator
+	-- 				if animator then
+	-- 					for _, track in animator:GetPlayingAnimationTracks() do
+	-- 						track:Stop()
+	-- 					end
+	-- 				end
+	-- 			end
+	-- 			-- if not shouldShow and u.model.Parent ~= ReplicatedStorage then
+	-- 			-- 	u.model.Parent = ReplicatedStorage
+	-- 			-- elseif shouldShow and u.model.Parent == ReplicatedStorage then
+	-- 			-- 	u.model.Parent = Workspace.NPCs
+	-- 			-- end
+	-- 		end
+	-- 	end
+	-- end)
+	--
+
 	network.Units.ReplicateHealth.OnClientEvent:Connect(function(buf: buffer)
 		local values = encoder.decodeHealth(buf)
 
@@ -397,6 +437,10 @@ function SMUnits.init(self: SMUnits)
 				end)
 				data["firstShotTs"] = os.clock() + data.firstShotDelay
 				data["startTime"] = os.clock()
+
+				if not data["target"] then
+					return
+				end
 			end
 
 			if values.state == "dead" then
@@ -407,7 +451,6 @@ function SMUnits.init(self: SMUnits)
 			end
 
 			u.stateMachine:transition(values.state, data)
-
 			return
 		end
 	end)

@@ -49,7 +49,7 @@ function SMUnits.init(self: SMUnits)
 
 	--networking events
 	network.Units.RequestPath.OnServerEvent:Connect(function(plr: Player, target: Vector3)
-		local flyingUnits, groundUnits = {}, {}
+		local flyingUnits: { SMUnit.SMUnit }, groundUnits: { SMUnit.SMUnit } = {}, {}
 		for k, u in self.units do
 			if u.owner ~= plr.Name then
 				continue
@@ -58,19 +58,15 @@ function SMUnits.init(self: SMUnits)
 			table.insert(tbl, u)
 		end
 
-		local flyingFormation = unitRaycast.buildFormation(target, flyingUnits, 0)
-		local groundFormation = unitRaycast.buildFormation(target, groundUnits, 0)
+		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 4)
+		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 4)
 
 		for i, u in groundUnits do
-			task.spawn(function()
-				u:move(groundFormation[i])
-			end)
+			u:move(groundFormation[i])
 		end
 
 		for i, u in flyingUnits do
-			task.spawn(function()
-				u:move(flyingFormation[i])
-			end)
+			u:move(flyingFormation[i])
 		end
 	end)
 
@@ -90,9 +86,10 @@ function SMUnits.init(self: SMUnits)
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
 		self:ReplicateUnitsToPlayer(plr, TableUtil.Values(self.units))
 
-		local rand = { "gunner", "gunner", "gunner", "juggernaut", "gunner", "tiger1", "abrams" }
+		local rand = string.lower(plr.Name) == "player1" and { "abrams", "tiger1" } or { "apache" }
+		-- local rand = { "gunner", "gunner", "gunner", "juggernaut", "gunner", "tiger1", "abrams" }
 		-- local rand = { "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 15 do
+		for i = 1, 300 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })

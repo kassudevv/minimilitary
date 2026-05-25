@@ -4,8 +4,8 @@ local stateMachine = require("./stateMachine")
 local unitTypes = require("./types")
 
 --* ENCODE WAYPOINTS TO BUF
-local COORD_MULTIPLIER = 4
-local Y_MULTIPLIER = 8 -- tighter vertical range → finer precision
+local COORD_MULTIPLIER = 16
+local Y_MULTIPLIER = 32 -- tighter vertical range → finer precision
 local function encodeWaypoints(waypoints: { Vector3 }): buffer
 	local serArr = Squash.array(Squash.Vector3int16())
 	local cursor = Squash.cursor()
@@ -38,13 +38,13 @@ local SMRecord = Squash.record({
 	id = Squash.T(Squash.vlq()),
 	state = Squash.T(Squash.literal("dead", "idle", "moving", "targeting")),
 })
-function encodeSM(id: number, newState: stateMachine.State, data: { [string]: any })
+function encodeSM(id: number, newState: stateMachine.State)
 	local cursor = Squash.cursor()
 	SMRecord.ser(cursor, {
 		id = id,
 		state = newState,
 	})
-	return Squash.tobuffer(cursor), data
+	return Squash.tobuffer(cursor)
 end
 
 function decodeSM(buf: buffer)
