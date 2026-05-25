@@ -30,7 +30,6 @@ observers.observePlayers(function(player)
 		end
 
 		return Charm.observe(getItems, function(item, guid)
-			print(item, guid)
 			local tool = createItemTool(item, guid)
 			tool.Parent = backpack
 			return function()

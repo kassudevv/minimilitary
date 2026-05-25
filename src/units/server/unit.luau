@@ -66,7 +66,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 						self.pawn,
 						self.stateMachine.data.waypoints,
 						distance,
-						(self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0)
+						(self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0)
 					)
 
 					if distance > self.stateMachine.data.totalLength then
@@ -129,9 +129,10 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.lastProjectileTs = 0
 
 	self.pathfinder = PathfindingService:CreatePath({
-		AgentRadius = 0.1, -- Default is usually 2
-		AgentHeight = 5, -- Adjust to rig size
+		AgentRadius = 4, -- Increases the NPC's collision footprint (default is 2)
+		AgentHeight = 5,
 		AgentCanJump = true,
+		WaypointSpacing = 4,
 	})
 
 	self.pawn = Instance.new("Part") :: Part

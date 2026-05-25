@@ -22,13 +22,18 @@ return {
 
 		LoadUnits = RE("B") :: RE<buffer>, -- replicate unit to client
 
-		RequestPath = RE("D") :: RE<Vector3>, -- request unit pathfinding target
-		MoveUnit = RE("E") :: RE<buffer, any>, -- replicate unit moveTo waypoints
+		RequestPath = RE("C") :: RE<Vector3>, -- request unit pathfinding target
+		MoveUnit = RE("D") :: RE<buffer, any>, -- replicate unit moveTo waypoints
 
-		ApplyPendingHit = RE("H") :: RE<number>,
+		ApplyPendingHit = RE("E") :: RE<number>,
 
-		ReplicateSM = RE("I") :: RE<buffer, { [string]: any }>,
-		ReplicateHealth = RE("J") :: RE<buffer>,
+		ReplicateSM = RE("F") :: RE<buffer, { [string]: any }>,
+		ReplicateHealth = RE("G") :: RE<buffer>,
+	},
+	Outposts = {
+		RequestOutposts = RE("H") :: RE<>,
+		LoadOutposts = RE("I") :: RE<any>,
+		Patch = RE("Patch") :: RE<any>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)

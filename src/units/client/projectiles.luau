@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Promise = require("../../../Packages/PromiseTyped")
 local Ripple = require("../../../Packages/Ripple")
+local particles = require("./particles")
 
 local Projectiles: { [string]: (any, Vector3) -> Promise.Class } = {
 	default = function(self: any, target: Vector3)
@@ -129,15 +130,11 @@ local Projectiles: { [string]: (any, Vector3) -> Promise.Class } = {
 			t:onComplete(function()
 				resolve()
 
-				local vfx = ReplicatedStorage.VFX.MissileImpact
-				local expl = vfx:Clone()
-				expl.Position = target
-				expl.Parent = workspace.Terrain
-				for _, emitter in expl:GetChildren() do
-					emitter = emitter :: ParticleEmitter
-					emitter:Emit()
-				end
-				Debris:AddItem(expl, 3)
+				particles.emit({
+					vfx = "MissileImpactBig",
+					position = target,
+					spread = 3,
+				})
 
 				missile.Transparency = 1
 

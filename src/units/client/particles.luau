@@ -64,8 +64,8 @@ local function emit(data: ParticleData): Instance
 
 	for _, descendant in effect:GetDescendants() do
 		if descendant:IsA("ParticleEmitter") then
-			-- descendant:Emit(data.emitCount or emitCountAttr.get(descendant))
-			descendant:Emit(1)
+			descendant:Emit(data.emitCount or emitCountAttr.get(descendant))
+			-- descendant:Emit(1)
 		end
 	end
 

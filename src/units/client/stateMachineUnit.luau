@@ -120,7 +120,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						self.model,
 						self.stateMachine.data.waypoints,
 						distance,
-						(self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0)
+						(self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0)
 					)
 
 					if distance > self.stateMachine.data.totalLength then
@@ -180,6 +180,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						self.projectile(self, targetPos)
 							:andThen(function()
 								if target.stateMachine.state ~= "dead" then
+									-- target impact effect depending on target type
 									if table.find({ "troop" }, target.def.type or "troop") then
 										particles.emit({
 											vfx = "Blood",
@@ -187,7 +188,6 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 											spread = 0.1,
 										})
 									end
-
 									if table.find({ "helicopter", "tank", "plane" }, target.def.type or "troop") then
 										particles.emit({
 											vfx = "BulletImpact",
@@ -196,9 +196,10 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 										})
 									end
 
-									if self.def.type == "tank" then
+									-- tank projectile explosion
+									if table.find({ "tank" }, self.def.type or "troop") then
 										particles.emit({
-											vfx = "MissileImpact",
+											vfx = "MissileImpactBig",
 											position = targetPos,
 											spread = 3,
 										})
@@ -243,7 +244,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 256 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	task.spawn(function()
@@ -278,7 +279,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 			self.model:PivotTo(
 				CFrame.new(
 					ground.Position
-						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0), 0)
+						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0), 0)
 				) * snapshot.position.Rotation
 			)
 		end

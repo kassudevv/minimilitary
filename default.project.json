@@ -27,6 +27,15 @@
             "$path": "src/core/shared"
           }
         },
+        "outposts": {
+          "$className": "Folder",
+          "client": {
+            "$path": "src/outposts/client"
+          },
+          "shared": {
+            "$path": "src/outposts/shared"
+          }
+        },
         "plots": {
           "$className": "Folder",
           "client": {

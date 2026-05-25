@@ -8,7 +8,7 @@ local function getAttackPosition(unit: SMUnit.SMUnit, target, hasLos: boolean): 
 	range = math.min(range, dist)
 
 	if not hasLos then
-		range = unit.def.range * math.random(10, 20) * 0.01
+		range = unit.def.range * math.random(3, 8) * 0.01
 	end
 
 	-- flying units don't need LoS pathing
