@@ -1,11 +1,17 @@
+local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
+local LocalizationService = game:GetService("LocalizationService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Charm = require("@game/ReplicatedStorage/Packages/Charm")
 local CharmSync = require("@game/ReplicatedStorage/Packages/CharmSync")
+local Ripple = require("@game/ReplicatedStorage/Packages/Ripple")
 local SMUnit = require("../units/server/unit")
 local SMUnits = require("../units/server/stateMachineUnit")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
+local flags = require("@game/ReplicatedStorage/src/units/client/flags")
 local fonts = require("@game/ReplicatedStorage/src/core/client/ui/utils/fonts")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/outposts/shared/types")
@@ -13,29 +19,31 @@ local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
 local unitSpawnAttr = attribute<<string?>>("Unit", "gunner")
 local outpostTitleAttr = attribute<<string?>>("Title", "Fortress")
+local guidAttr = attribute<<string?>>("UnitGuid", "")
+
+local CAPTURE_TIME = 1
 
 local Outpost = {}
 Outpost.__index = Outpost
 
-type Status = "uncontested" | "contested" | "claimed"
+type Status = types.Status
 
 type OutpostData = {
 	root: Folder,
 	guid: string,
-	units: { SMUnit.SMUnit },
+
 	spawners: { Part },
 	colliders: { BasePart },
-
-	visuals: {
-		status: TextLabel,
-		owner: TextLabel,
-		object: TextLabel,
-	},
 
 	atoms: {
 		owner: Charm.Atom<string>,
 		status: Charm.Atom<Status>,
+		captureProgress: Charm.Atom<number>,
 	},
+
+	units: { [string]: SMUnit.SMUnit },
+
+	capturePoint: Vector3,
 }
 
 export type Outpost = setmetatable<OutpostData, typeof(Outpost)>
@@ -50,30 +58,35 @@ function Outpost.new(guid: string, root: Folder): Outpost
 	self.spawners = {}
 	self.colliders = {}
 
-	self.atoms.owner = Charm.atom("")
-	self.atoms.status = Charm.atom("uncontested" :: Status)
+	self.units = {}
 
-	-- self.visuals = {}
+	self.atoms = {
+		owner = Charm.atom(types.outpostTemplate.owner),
+		status = Charm.atom(types.outpostTemplate.status),
+		captureProgress = Charm.atom(types.outpostTemplate.captureProgress),
+	}
 
-	-- Charm.effect(function()
-	-- 	local owner = self.owner()
-	-- 	if owner == "" then
-	-- 		return
-	-- 	end
-	-- end)
+	Charm.effect(function()
+		local owner = self.atoms.owner()
 
-	-- local statusColors: { [Status]: Color3 } = {
-	-- 	uncontested = Color3.fromHex("#FFFFFF"),
-	-- 	contested = Color3.fromHex("#FFFFFF"),
-	-- 	claimed = Color3.fromHex("#FFFFFF"),
-	-- }
-	-- Charm.effect(function()
-	-- 	local newStatus = self.status()
-	-- 	waitFor.Descendant(self.root, "Status"):andThen(function(status: TextLabel)
-	-- 		status.Text = string.upper(newStatus)
-	-- 		status.TextColor3 = statusColors[newStatus]
-	-- 	end)
-	-- end)
+		waitFor.Descendants(root, { "FlagImg", "FlagImg2" }):andThen(function(objs: { ImageLabel })
+			local code = "XX"
+
+			local plr: Player = Players:FindFirstChild(owner) :: Player
+			if owner ~= "pve" and plr then
+				local result, nCode =
+					pcall(LocalizationService.GetCountryRegionForPlayerAsync, LocalizationService, plr)
+				if result then
+					code = nCode
+				end
+			end
+
+			local img = (flags.get(code) or flags.flags.US).Flag
+			for _, o in objs do
+				o.Image = `rbxassetid://{img}`
+			end
+		end)
+	end)
 
 	-- init unit spawners
 	waitFor.Descendant(root, "Spawns"):andThen(function(spawns: Folder)
@@ -84,19 +97,12 @@ function Outpost.new(guid: string, root: Folder): Outpost
 			spawn.Parent = nil
 			table.insert(self.spawners, spawn)
 		end
+	end)
 
-		local batchReplicate = {}
-		for _, spawner in self.spawners do
-			table.insert(
-				batchReplicate,
-				SMUnits:SpawnUnit({
-					unitId = unitSpawnAttr.get(spawner) or "gunner",
-					position = spawner.CFrame,
-					replicate = false,
-				})
-			)
-		end
-		SMUnits:ReplicateUnits(batchReplicate)
+	-- init capture circle
+	waitFor.Descendant(root, "Capture"):andThen(function(obj: Model)
+		CollectionService:AddTag(obj, "NoUnitRaycast")
+		self.capturePoint = obj:GetPivot().Position
 	end)
 
 	-- load colliders and env parts
@@ -115,26 +121,109 @@ function Outpost.new(guid: string, root: Folder): Outpost
 
 	-- load control stuff
 	local title = outpostTitleAttr.get(self.root)
-	waitFor.Descendant(root, "ControlPointOverhead"):andThen(function(obj)
-		obj = obj :: BillboardGui
 
-		waitFor.Descendants(obj, { "Status", "Owner", "Object" }):andThen(function(objs: { TextLabel })
-			local status, owner, object = table.unpack(objs)
+	waitFor.Descendants(self.root, { "Status", "Owner", "Object" }):andThen(function(objs: { TextLabel })
+		local status, owner, object = table.unpack(objs)
 
-			status.FontFace = fonts.inter.bold
-			owner.FontFace = fonts.inter.bold
-			object.FontFace = fonts.inter.bold
-
-			owner.Text = "UNCLAIMED"
-			object.Text = title or "Unknown"
-		end)
+		status.FontFace = fonts.inter.bold
+		owner.FontFace = fonts.inter.bold
+		object.FontFace = fonts.inter.bold
+		object.Text = title or "Undefined"
 	end)
 
-	waitFor.Descendants(root, { "FlagGui1", "FlagGui2" }):andThen(function(objs: { BillboardGui })
-		local flagGui1, flagGui2 = table.unpack(objs)
-	end)
+	self:spawnUnits()
 
 	return self
+end
+
+function Outpost.spawnUnits(self: Outpost)
+	local batchReplicate = {}
+	for _, spawner in self.spawners do
+		if math.random(1, 3) ~= 3 then
+			continue
+		end
+		local unit = SMUnits:SpawnUnit({
+			unitId = unitSpawnAttr.get(spawner) or "gunner",
+			position = spawner.CFrame,
+			replicate = false,
+		})
+		table.insert(batchReplicate, unit)
+		self.units[unit.guid] = unit
+	end
+	SMUnits:ReplicateUnits(batchReplicate)
+end
+
+local NPCOverlapParams = OverlapParams.new()
+NPCOverlapParams.FilterType = Enum.RaycastFilterType.Include
+NPCOverlapParams.FilterDescendantsInstances = { Workspace.Camera.NPCs }
+function Outpost.tick(self: Outpost, elapsed: number)
+	local pawns = Workspace:GetPartBoundsInRadius(self.capturePoint, 50, NPCOverlapParams)
+
+	local overlappingByPlayer: { [string]: { SMUnit.SMUnit } } = {}
+	for _, pawn in pawns do
+		local guid = guidAttr.get(pawn)
+		if not guid then
+			continue
+		end
+
+		local unit = SMUnits.units[guid]
+		-- if unit.owner == "pve" then
+		-- 	continue
+		-- end
+
+		if not overlappingByPlayer[unit.owner] then
+			overlappingByPlayer[unit.owner] = {}
+		end
+
+		table.insert(overlappingByPlayer[unit.owner], unit)
+	end
+
+	local contestingPlrs = TableUtil.Keys(overlappingByPlayer)
+	if #contestingPlrs > 1 then
+		self.atoms.status("contested")
+	elseif #contestingPlrs == 1 then
+		local plr = contestingPlrs[1]
+
+		if self.atoms.owner() ~= plr then
+			if self.atoms.captureProgress() > 0 then
+				self.atoms.status("neutralizing")
+			else
+				self.atoms.status("capturing")
+				self.atoms.owner(plr)
+			end
+		end
+	else
+		self.atoms.status("idle")
+	end
+
+	local status = self.atoms.status()
+	if status == "neutralizing" then
+		if self.atoms.captureProgress() == 0 then
+			self.atoms.status("capturing")
+			return
+		end
+
+		self.atoms.captureProgress(function(curr: number)
+			return math.max(curr - (1 / CAPTURE_TIME / 2 * elapsed), 0)
+		end)
+	elseif status == "capturing" then
+		if self.atoms.captureProgress() == 2 then
+			self.atoms.status("idle")
+			return
+		end
+
+		self.atoms.captureProgress(function(curr: number)
+			return math.min(curr + (1 / CAPTURE_TIME / 2 * elapsed), 2)
+		end)
+	end
+end
+
+function Outpost.getSyncAtoms(self: Outpost)
+	return {
+		owner = self.atoms.owner,
+		status = self.atoms.status,
+		captureProgress = self.atoms.captureProgress,
+	}
 end
 
 function Outpost.snapshot(self: Outpost): types.OutpostSnapshot
@@ -157,16 +246,43 @@ function Outposts.init(self: Outposts)
 		self.outposts[guid] = Outpost.new(guid, c :: Folder)
 	end
 
+	local TICK_RATE = 1
+	local lastTick = 0
+	RunService.Heartbeat:Connect(function(dt)
+		local elapsed = os.clock() - lastTick
+		if elapsed < TICK_RATE then
+			return
+		end
+		lastTick = os.clock()
+
+		for _, o in self.outposts do
+			o:tick(elapsed)
+		end
+	end)
+
 	-- charms
+	local syncAtoms = {}
+
+	for guid, outpost in self.outposts do
+		syncAtoms[`outpost-{guid}`] = Charm.computed(function()
+			return {
+				owner = outpost.atoms.owner(),
+				status = outpost.atoms.status(),
+				captureProgress = outpost.atoms.captureProgress(),
+			}
+		end)
+	end
 
 	-- network
 	network.Outposts.RequestOutposts.OnServerEvent:Connect(function(plr: Player)
 		network.Outposts.LoadOutposts:FireClient(
 			plr,
-			TableUtil.Map(TableUtil.Values(self.outposts), function(o: Outpost)
+			TableUtil.Map(TableUtil.Values(self.outposts :: any), function(o: Outpost): types.OutpostSnapshot
 				return o:snapshot()
 			end)
 		)
+
+		CharmSync.server.addSignalsToClient(plr, syncAtoms)
 	end)
 end
 

@@ -1,8 +1,9 @@
-export type Status = "uncontested" | "contested" | "claimed"
+export type Status = "idle" | "neutralizing" | "capturing" | "contested"
 
 export type Outpost = {
 	read owner: string,
 	read status: Status,
+	read captureProgress: number,
 }
 
 export type OutpostSnapshot = {
@@ -12,8 +13,9 @@ export type OutpostSnapshot = {
 }
 
 local outpostTemplate: Outpost = {
-	owner = "",
-	status = "uncontested",
+	owner = "pve",
+	status = "idle",
+	captureProgress = 2,
 }
 
 return { outpostTemplate = outpostTemplate }

@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TypedRemote = require(ReplicatedStorage.Packages.TypedRemote)
+local outpostTypes = require("../../outposts/shared/types")
 local plotTypes = require("../../plots/shared/types")
 
 type RF<T..., R...> = TypedRemote.Function<T..., R...>
@@ -32,8 +33,9 @@ return {
 	},
 	Outposts = {
 		RequestOutposts = RE("H") :: RE<>,
-		LoadOutposts = RE("I") :: RE<any>,
-		Patch = RE("Patch") :: RE<any>,
+		LoadOutposts = RE("I") :: RE<{ outpostTypes.OutpostSnapshot }>,
+		SyncState = RE("SyncState") :: RE<any>,
+		RequestState = RE("RequestState") :: RE<any>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)

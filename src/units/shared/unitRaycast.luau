@@ -91,6 +91,20 @@ local function trackPlayer(player: Player)
 	end)
 end
 
+local CollectionService = game:GetService("CollectionService")
+local IGNORE_TAG = "NoUnitRaycast"
+
+local function initTaggedIgnored()
+	-- catch everything already tagged at init time
+	for _, instance in CollectionService:GetTagged(IGNORE_TAG) do
+		addIgnored(instance)
+	end
+
+	-- catch anything tagged later at runtime
+	CollectionService:GetInstanceAddedSignal(IGNORE_TAG):Connect(addIgnored)
+	CollectionService:GetInstanceRemovedSignal(IGNORE_TAG):Connect(removeIgnored)
+end
+
 local function initRaycastParams()
 	if initialized then
 		refreshRaycastParams()
@@ -133,6 +147,8 @@ local function initRaycastParams()
 			removeIgnored(npc)
 		end)
 	end)
+
+	initTaggedIgnored()
 
 	for _, player in Players:GetPlayers() do
 		trackPlayer(player)

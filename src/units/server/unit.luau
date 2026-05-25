@@ -1,11 +1,14 @@
 local PathfindingService = game:GetService("PathfindingService")
 local Workspace = game:GetService("Workspace")
+local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local index = require("@game/ReplicatedStorage/src/units/shared/index")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local stateMachine = require("@game/ReplicatedStorage/src/units/shared/stateMachine")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
+
+local guidAttr = attribute<<string?>>("UnitGuid", "")
 
 local SMUnit = {}
 SMUnit.__index = SMUnit
@@ -141,7 +144,8 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.pawn.CanCollide = false
 	self.pawn.Size = Vector3.new(1.5, 3, 1.5)
 	self.pawn.Color = Color3.fromHex("#ffaa00")
-	self.pawn.Parent = Workspace.Camera
+	guidAttr.set(self.pawn, self.guid)
+	self.pawn.Parent = Workspace.Camera.NPCs
 
 	return self
 end
