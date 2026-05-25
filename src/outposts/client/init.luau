@@ -63,6 +63,7 @@ function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 
 		Charm.effect(function()
 			local state = self.getState() :: types.Outpost
+			print("Outpost State: ", state)
 
 			if state.status == "idle" then
 				if state.captureProgress == 2 and state.owner ~= "pve" then

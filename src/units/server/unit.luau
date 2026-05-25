@@ -326,11 +326,9 @@ function SMUnit.addToDamageQueue(self: SMUnit, amt: number)
 end
 function SMUnit.applyFromDamageQueue(self: SMUnit, amt: number)
 	for i, nxt in self.damageQueue do
-		if nxt == amt then
-			self.damageQueue[i] = nil
-			self:damage(amt)
-			return
-		end
+		self.damageQueue[i] = nil
+		self:damage(amt)
+		return
 	end
 end
 

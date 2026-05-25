@@ -125,12 +125,15 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					gravestone.Parent = Workspace.Camera
 					self.stateMachine.data.gravestone = gravestone
 
-					if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
-						particles.emit({
-							vfx = "MissileImpactBig",
-							position = self.model:GetPivot().Position,
-							spread = 3,
-						})
+					if self.LOD == "HOT" then
+						if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
+							print("Died with LOD", self.LOD)
+							particles.emit({
+								vfx = "MissileImpactBig",
+								position = self.model:GetPivot().Position,
+								spread = 3,
+							})
+						end
 					end
 				end,
 				tick = function(dt)
@@ -264,7 +267,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 							network.Units.ApplyPendingHit:FireServer(target.id, self.def.damage)
 						end
 
-						if self.LOD == "HOT" then
+						if self.LOD == "HOT" and (not ClientConfig.PERFORMANCE_MODE or math.random(1, 3) == 1) then
 							if table.find({ "tank", "plane", "helicopter" }, self.def.type or "troop") then
 								particles.emit({
 									vfx = "MissileImpact",
@@ -319,7 +322,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 96 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	self.LOD = "HOT"
@@ -370,7 +373,7 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
 	if self.LOD == "HOT" then
-		self.healthBarGui.MaxDistance = 96
+		self.healthBarGui.MaxDistance = 1
 	end
 end
 

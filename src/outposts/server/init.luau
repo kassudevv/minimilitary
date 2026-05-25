@@ -166,9 +166,6 @@ function Outpost.tick(self: Outpost, elapsed: number)
 		end
 
 		local unit = SMUnits.units[guid]
-		-- if unit.owner == "pve" then
-		-- 	continue
-		-- end
 
 		if not overlappingByPlayer[unit.owner] then
 			overlappingByPlayer[unit.owner] = {}
@@ -190,6 +187,8 @@ function Outpost.tick(self: Outpost, elapsed: number)
 				self.atoms.status("capturing")
 				self.atoms.owner(plr)
 			end
+		else
+			self.atoms.status("capturing")
 		end
 	else
 		self.atoms.status("idle")

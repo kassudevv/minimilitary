@@ -96,8 +96,8 @@ function SMUnits.init(self: SMUnits)
 		-- local rand = string.lower(plr.Name) == "player1" and { "abrams", "tiger1" } or { "apache" }
 		-- local rand = { "gunner", "gunner", "gunner", "juggernaut", "gunner", "tiger1", "abrams" }
 		local rand =
-			{ "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 1000 do
+			{ "gunner", "apache", "abrams", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
+		for i = 1, 250 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })

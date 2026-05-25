@@ -10,6 +10,7 @@ local conf = require("@game/ReplicatedStorage/src/plots/shared/conf")
 local grid = require("@game/ReplicatedStorage/src/plots/shared/grid")
 local items = require("@game/ReplicatedStorage/src/accounts/shared/items")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
+local observers = require("@game/ReplicatedStorage/src/accounts/shared/utils/observers")
 local store = require("../accounts/server/store")
 local types = require("@game/ReplicatedStorage/src/plots/shared/types")
 
@@ -118,16 +119,20 @@ function Plot.charInit(self: Plot)
 		return
 	end
 
-	local char = self.owner.Character or self.owner.CharacterAdded:Wait()
-	char:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))
-	local h = char:WaitForChild("Humanoid") :: Humanoid
-	h.WalkSpeed = 70
+	-- local char = self.owner.Character or self.owner.CharacterAdded:Wait()
+	-- char:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))
+	-- local h = char:WaitForChild("Humanoid") :: Humanoid
+	-- h.WalkSpeed = 120
 
-	self.janitor:Add(self.owner.CharacterAdded:Connect(function(newChar)
-		newChar:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))
-		h = newChar:WaitForChild("Humanoid") :: Humanoid
-		h.WalkSpeed = 70
-	end))
+	-- self.janitor:Add(self.owner.CharacterAdded:Connect(function(newChar)
+	-- end))
+
+	observers.observeCharacter(self.owner, function(char: Model)
+		char:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))
+		local h = char:WaitForChild("Humanoid") :: Humanoid
+		h.WalkSpeed = 120
+		return function() end
+	end)
 end
 
 function Plot.placeBuilding(self: Plot, buildingId: string, col: number, row: number, rot: number)
