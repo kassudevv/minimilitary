@@ -92,7 +92,7 @@ function SMUnits.init(self: SMUnits)
 
 		local rand = { "gunner", "gunner", "gunner", "juggernaut", "apache" }
 		-- local rand = { "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 8 do
+		for i = 1, 10 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
@@ -137,6 +137,8 @@ function SMUnits.SpawnUnit(
 	if options.replicate then
 		network.Units.LoadUnits:FireAllClients({ self.units[guid]:snapshot() })
 	end
+
+	print(`Spawned unit {unitDef.itemId}`)
 
 	return self.units[guid]
 end

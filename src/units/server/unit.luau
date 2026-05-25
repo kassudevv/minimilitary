@@ -66,7 +66,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 						self.pawn,
 						self.stateMachine.data.waypoints,
 						distance,
-						self.def.offset
+						(self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0)
 					)
 
 					if distance > self.stateMachine.data.totalLength then
@@ -147,7 +147,7 @@ end
 
 function SMUnit.snapshot(self: SMUnit): types.UnitSnapshot
 	return {
-		unitId = self.def.id or "gunner",
+		itemId = self.def.itemId,
 		position = self.pawn.CFrame,
 		guid = self.guid,
 		owner = self.owner,
@@ -177,15 +177,16 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 		for _, wp in waypoints do
 			table.insert(wps, Vector3.new(wp.Position.X, wp.Position.Y, wp.Position.Z))
 		end
+	end
 
-		for i, wp in wps do
-			local params = unitRaycast.getRaycastParams()
-			local rcResult = Workspace:Raycast(wp + Vector3.new(0, 50, 0), -Vector3.yAxis * 100, params)
-			if rcResult then
-				wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
-			end
+	for i, wp in wps do
+		local params = unitRaycast.getRaycastParams()
+		local rcResult = Workspace:Raycast(wp + Vector3.new(0, 50, 0), -Vector3.yAxis * 100, params)
+		if rcResult then
+			wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
 		end
 	end
+
 	self.isThinking = false
 	self:replicatedTransition("moving", {
 		waypoints = encoder.encodeWaypoints(wps),

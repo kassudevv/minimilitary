@@ -412,7 +412,7 @@ function SMUnits.init(self: SMUnits)
 				continue
 			end
 
-			local unit = constants.getUnit(snapshot.unitId)
+			local unit = constants.getUnit(snapshot.itemId)
 			assert(unit ~= nil, "unit is nil")
 			self.units[snapshot.guid] = SMUnit.new(unit, snapshot)
 			task.wait()

@@ -1,5 +1,5 @@
 export type UnitSnapshot = {
-	unitId: string,
+	itemId: string,
 	owner: string,
 	position: CFrame,
 	guid: string,
