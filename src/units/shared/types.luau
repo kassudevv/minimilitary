@@ -6,23 +6,24 @@ export type UnitSnapshot = {
 }
 
 export type Unit = {
-	itemId: string?,
+	itemId: string,
+	model: Model,
+
 	name: string,
 
-	maxHealth: number,
+	health: number,
 	damage: number,
 	range: number,
 
-	model: Model,
 	speed: number,
 	scale: number,
 	firerate: number,
 
 	shotDelay: number?,
 	offset: number?,
-	boundsRadius: number,
 
-	type: Type?,
+	type: Type,
+	variant: string?,
 
 	movementMode: "ground" | "flying" | nil,
 	attackOverride: string?,

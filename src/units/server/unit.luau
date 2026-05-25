@@ -50,7 +50,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.owner = owner and owner.Name or "pve"
 	self.id = index.registerNew(guid)
 
-	self.health = def.maxHealth
+	self.health = def.health
 	self.damageQueue = {}
 	self.lastMoveInterruptTs = 0
 
@@ -80,20 +80,14 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 				tick = function(delta)
 					local state = self.stateMachine.data
 
-					-- state.accum += dt
-					-- if state.accum < 0.1 then
-					-- 	return
-					-- end
-					-- local delta = dt
-					-- state.accum = 0
-
 					local path = state.path :: unitRaycast.Path
 					local seg = path.segments[self.stateMachine.data.segment]
 
 					if not seg then
-						self:replicatedTransition("idle" :: stateMachine.State, {})
+						self.stateMachine:transition("idle", {})
 						return
 					end
+
 					if not state.rotation then
 						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
 					end
@@ -105,7 +99,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 
 						seg = path.segments[state.segment]
 						if not seg then
-							self:replicatedTransition("idle" :: stateMachine.State, {})
+							self.stateMachine:transition("idle", {})
 							return
 						end
 						state.rotation = CFrame.lookAt(Vector3.zero, seg.dir) - Vector3.zero
@@ -176,7 +170,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 		AgentRadius = 4, -- Increases the NPC's collision footprint (default is 2)
 		AgentHeight = 5,
 		AgentCanJump = true,
-		WaypointSpacing = 4,
+		WaypointSpacing = 64,
 	})
 
 	self.pawn = Instance.new("Part") :: Part

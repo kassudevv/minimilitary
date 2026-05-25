@@ -10,6 +10,7 @@ local Ripple = require("@game/ReplicatedStorage/Packages/Ripple")
 local SMUnit = require("../units/server/unit")
 local SMUnits = require("../units/server/stateMachineUnit")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
+local Tick = require("@game/ReplicatedStorage/src/core/shared/Tick")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
 local flags = require("@game/ReplicatedStorage/src/units/client/flags")
 local fonts = require("@game/ReplicatedStorage/src/core/client/ui/utils/fonts")
@@ -32,7 +33,7 @@ type OutpostData = {
 	root: Folder,
 	guid: string,
 
-	spawners: { Part },
+	spawners: { [Part]: { units: { SMUnit.SMUnit }, pendingRespawn: boolean } },
 	colliders: { BasePart },
 
 	atoms: {
@@ -95,7 +96,7 @@ function Outpost.new(guid: string, root: Folder): Outpost
 				continue
 			end
 			spawn.Parent = nil
-			table.insert(self.spawners, spawn)
+			self.spawners[spawn] = { units = {}, pendingRespawn = false }
 		end
 	end)
 
@@ -139,24 +140,52 @@ end
 
 function Outpost.spawnUnits(self: Outpost)
 	local batchReplicate = {}
-	for _, spawner in self.spawners do
-		-- if math.random(1, 3) ~= 3 then
-		-- 	continue
-		-- end
+	for spawner, data in self.spawners do
 		local unit = SMUnits:SpawnUnit({
 			unitId = unitSpawnAttr.get(spawner) or "gunner",
 			position = spawner.CFrame,
 			replicate = false,
 		})
 		table.insert(batchReplicate, unit)
-		self.units[unit.guid] = unit
+		table.insert(data.units, unit)
 	end
 	SMUnits:ReplicateUnits(batchReplicate)
 end
 
 local NPCOverlapParams = OverlapParams.new()
 function Outpost.tick(self: Outpost, elapsed: number)
-	local pawns = Workspace:GetPartBoundsInRadius(self.capturePoint, 50, NPCOverlapParams)
+	self:tickCaptureProgress(elapsed)
+
+	local alive = 0
+	for i, s in self.spawners do
+		for _, u in s.units do
+			if not u or u.stateMachine.state == "dead" then
+				table.remove(self.spawners[i].units, table.find(self.spawners[i].units, u))
+			else
+				alive += 1
+			end
+		end
+	end
+
+	for s, u in self.spawners do
+		if #u.units == 0 and not u.pendingRespawn then
+			u.pendingRespawn = true
+			task.delay(math.random(10, 15), function()
+				table.insert(
+					u.units,
+					SMUnits:SpawnUnit({
+						unitId = unitSpawnAttr.get(s) or "gunner",
+						position = s.CFrame,
+						replicate = false,
+					})
+				)
+			end)
+		end
+	end
+end
+
+function Outpost.tickCaptureProgress(self: Outpost, elapsed: number)
+	local pawns = Workspace:GetPartBoundsInRadius(self.capturePoint, 75, NPCOverlapParams)
 
 	local overlappingByPlayer: { [string]: { SMUnit.SMUnit } } = {}
 	for _, pawn in pawns do
@@ -252,17 +281,9 @@ function Outposts.init(self: Outposts)
 		self.outposts[guid] = Outpost.new(guid, c :: Folder)
 	end
 
-	local TICK_RATE = 1
-	local lastTick = 0
-	RunService.Heartbeat:Connect(function(dt)
-		local elapsed = os.clock() - lastTick
-		if elapsed < TICK_RATE then
-			return
-		end
-		lastTick = os.clock()
-
+	Tick.every(1, function(dt)
 		for _, o in self.outposts do
-			o:tick(elapsed)
+			o:tick(dt)
 		end
 	end)
 

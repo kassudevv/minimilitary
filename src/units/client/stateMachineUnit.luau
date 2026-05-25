@@ -96,7 +96,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 
 	self.id = snapshot.id
 
-	self.health = def.maxHealth
+	self.health = def.health
 	self.lastProjectileTs = 0
 	self.cache = {}
 	self.projectile = def.attackOverride and projectiles[def.attackOverride] or projectiles.default
@@ -270,7 +270,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						if self.LOD == "HOT" and (not ClientConfig.PERFORMANCE_MODE or math.random(1, 3) == 1) then
 							if table.find({ "tank", "plane", "helicopter" }, self.def.type or "troop") then
 								particles.emit({
-									vfx = "MissileImpact",
+									vfx = "MissileImpactBig",
 									position = targetPos,
 									spread = 3,
 								})
@@ -322,7 +322,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 128 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	self.LOD = "HOT"
@@ -371,9 +371,9 @@ end
 function SMUnit.setHealth(self: SMUnit, amt: number)
 	self.health = amt
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
-	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
+	p.Size = UDim2.fromScale(self.health / self.def.health, 1)
 	if self.LOD == "HOT" then
-		self.healthBarGui.MaxDistance = 1
+		self.healthBarGui.MaxDistance = 128
 	end
 end
 

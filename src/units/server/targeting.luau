@@ -21,7 +21,7 @@ end
 
 local function scanTargets(unit: SMUnit.SMUnit, targetGrid)
 	local attackRange = unit.def.range
-	local targetRange = attackRange * (unit.owner ~= "pve" and 2 or 1.05)
+	local targetRange = attackRange * (unit.owner ~= "pve" and 1.2 or 1.05)
 
 	-- aggro mode
 	if (os.clock() - unit.lastProjectileTs) < 30 then
@@ -60,7 +60,7 @@ local function scanTargets(unit: SMUnit.SMUnit, targetGrid)
 end
 
 local function tickUnit(unit: SMUnit.SMUnit, targetGrid)
-	if unit.stateMachine.state ~= "idle" or unit.isThinking then
+	if unit.isThinking or table.find({ "dead", "targeting" }, unit.stateMachine.state) then
 		return
 	end
 
@@ -73,7 +73,21 @@ local function tickUnit(unit: SMUnit.SMUnit, targetGrid)
 		-- 	return
 		-- end
 
+		-- unit was moving but found a valid target in line of sight
+		if unit.stateMachine.state == "moving" then
+			if os.clock() - unit.lastMoveInterruptTs > 3 then
+				unit.lastMoveInterruptTs = os.clock()
+			else
+				return
+			end
+		end
+
 		unit:target(s.losTarget)
+		return
+	end
+
+	-- unit is already moving
+	if unit.stateMachine.state == "moving" then
 		return
 	end
 
