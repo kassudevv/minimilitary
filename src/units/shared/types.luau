@@ -2,8 +2,7 @@ export type UnitSnapshot = {
 	itemId: string,
 	owner: string,
 	position: CFrame,
-	guid: string,
-	id: buffer,
+	id: number,
 }
 
 export type Unit = {

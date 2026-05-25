@@ -1,11 +1,11 @@
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local SMUnit = require("../server/unit")
-local Squash = require("@game/ReplicatedStorage/Packages/Squash")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")
 local constants = require("@game/ReplicatedStorage/src/units/shared/constants")
+local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local spatialGrid = require("./spatialGrid")
 local targeting = require("./targeting")
@@ -74,9 +74,9 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	network.Units.ApplyPendingHit.OnServerEvent:Connect(function(plr: Player, target: string)
+	network.Units.ApplyPendingHit.OnServerEvent:Connect(function(plr: Player, target: number)
 		for _, u in self.units do
-			if u.guid == target then
+			if u.id == target then
 				local dmg = table.remove(u.damageQueue, 1)
 				if not dmg then
 					return
@@ -90,13 +90,15 @@ function SMUnits.init(self: SMUnits)
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
 		self:ReplicateUnitsToPlayer(plr, TableUtil.Values(self.units))
 
-		local rand = { "gunner", "gunner", "gunner", "juggernaut", "apache" }
+		local rand = { "gunner", "gunner", "gunner", "juggernaut", "gunner", "tiger1", "abrams" }
 		-- local rand = { "gunner", "apache", "gunner", "gunner", "abrams", "juggernaut", "tiger1", "littlebird", "abrams" }
-		for i = 1, 10 do
+		for i = 1, 5 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
 		end
+
+		accounts.addUnit(plr, { assignedSquad = 1, unitId = "apache" })
 
 		local account = accountStore.getAccount(plr.Name)
 		if account then
@@ -135,26 +137,26 @@ function SMUnits.SpawnUnit(
 	self.units[guid] = SMUnit.new(unitDef, options.owner, guid, options.position, self.destroyCb)
 
 	if options.replicate then
-		network.Units.LoadUnits:FireAllClients({ self.units[guid]:snapshot() })
+		self:ReplicateUnits({ self.units[guid] })
 	end
-
-	print(`Spawned unit {unitDef.itemId}`)
 
 	return self.units[guid]
 end
 
 function SMUnits.ReplicateUnits(self: SMUnits, units: { SMUnit.SMUnit })
-	network.Units.LoadUnits:FireAllClients(TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
-		return u:snapshot()
-	end))
+	network.Units.LoadUnits:FireAllClients(
+		encoder.encodeUnits(TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
+			return u:snapshot()
+		end))
+	)
 end
 
 function SMUnits.ReplicateUnitsToPlayer(self: SMUnits, plr: Player, units: { SMUnit.SMUnit })
 	network.Units.LoadUnits:FireClient(
 		plr,
-		TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
+		encoder.encodeUnits(TableUtil.Map(units, function(u: SMUnit.SMUnit): types.UnitSnapshot
 			return u:snapshot()
-		end)
+		end))
 	)
 end
 

@@ -51,7 +51,8 @@ local accountTemplate: Account = {
 	items = {
 		["1"] = { amount = 6, itemId = "wheat" },
 		["2"] = { amount = 1, itemId = "wheat_farm" },
-		["43"] = { amount = 3, itemId = "housing1" },
+		["3"] = { amount = 3, itemId = "housing1" },
+		["4"] = { amount = 3, itemId = "academy1" },
 	},
 }
 

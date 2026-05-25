@@ -94,7 +94,7 @@ local unitsById: { [string]: Unit } = {
 		range = 72,
 		speed = 14,
 		scale = 1.6,
-		firerate = 1,
+		firerate = 0.25,
 		boundsRadius = 8,
 		attackOverride = "helicopter_missiles",
 		movementMode = "flying",
@@ -116,7 +116,8 @@ local unitsById: { [string]: Unit } = {
 
 for _, u in unitsById do
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
-	u.speed *= 1.3
+	-- u.speed *= 1.3
+	u.speed *= 2
 end
 
 local function getUnit(itemId: string): Unit?

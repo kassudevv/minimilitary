@@ -77,7 +77,7 @@ return function()
 				create("UICorner")({ CornerRadius = UDim.new(0, 8) }),
 				create("UIStroke")({
 					Color = function()
-						return equippedItem() == item.itemId and Color3.fromHex("#ffffff") or Color3.fromHex("#1b1b1b")
+						return equippedItem() == item.itemId and Color3.fromHex("#ffffff") or Color3.fromHex("#271e1b")
 					end,
 					StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
 					Thickness = 0.03,
@@ -115,8 +115,8 @@ return function()
 						Font = Enum.Font.Gotham,
 
 						create("UIStroke")({
-							Color = Color3.fromHex("#000000"),
-							Thickness = px(4),
+							Color = Color3.fromHex("#271e1b"),
+							Thickness = px(2),
 							Transparency = 0,
 						}),
 					}),

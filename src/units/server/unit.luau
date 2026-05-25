@@ -84,7 +84,9 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 				tick = function(dt)
 					local target = self.stateMachine.data.target
 
-					local distance = unitRaycast.getPlanarDistance(self.pawn.Position, target.pawn.Position)
+					local distance = target.stateMachine.state ~= "dead"
+							and unitRaycast.getPlanarDistance(self.pawn.Position, target.pawn.Position)
+						or 0
 					if target.stateMachine.state == "dead" or (distance > self.def.range) then
 						self:replicatedTransition("idle" :: stateMachine.State, {})
 						return
@@ -115,7 +117,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 						self.lastProjectileTs = self.stateMachine.data.start
 						self.stateMachine.data.isReadyToFire = false
 
-						target:addToDamageQueue(self.def.damage * (self.owner == "pve" and 0.2 or 1))
+						target:addToDamageQueue(self.def.damage * (self.owner == "pve" and 0.002 or 1))
 					end
 				end,
 				onExit = function(next) end,
@@ -127,11 +129,9 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.lastProjectileTs = 0
 
 	self.pathfinder = PathfindingService:CreatePath({
-		AgentRadius = 5,
-		AgentHeight = 1,
-		AgentCanJump = false,
-		AgentMaxSlope = 32,
-		WaypointSpacing = 8,
+		AgentRadius = 0.1, -- Default is usually 2
+		AgentHeight = 5, -- Adjust to rig size
+		AgentCanJump = true,
 	})
 
 	self.pawn = Instance.new("Part") :: Part
@@ -151,7 +151,7 @@ function SMUnit.snapshot(self: SMUnit): types.UnitSnapshot
 		position = self.pawn.CFrame,
 		guid = self.guid,
 		owner = self.owner,
-		id = index.ser(self.id),
+		id = self.id,
 	}
 end
 
@@ -163,16 +163,18 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 	self.isThinking = true
 	self:replicatedTransition("idle")
 
-	self.pathfinder:ComputeAsync(self.pawn.Position, target)
-	if self.pathfinder.Status ~= Enum.PathStatus.Success then
-		return
-	end
-
 	local wps: { Vector3 } = {}
 	if self.def.movementMode == "flying" then
 		table.insert(wps, self.pawn.Position)
 		table.insert(wps, target)
 	else
+		self.pathfinder:ComputeAsync(self.pawn.Position, target)
+		if self.pathfinder.Status ~= Enum.PathStatus.Success then
+			print("Pathfinding fail: ", self.pathfinder.Status)
+			self.isThinking = false
+			return
+		end
+
 		local waypoints = self.pathfinder:GetWaypoints()
 		for _, wp in waypoints do
 			table.insert(wps, Vector3.new(wp.Position.X, wp.Position.Y, wp.Position.Z))
@@ -187,13 +189,14 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 		end
 	end
 
-	self.isThinking = false
 	self:replicatedTransition("moving", {
 		waypoints = encoder.encodeWaypoints(wps),
-		totalLength = unitRaycast.getPathLength(wps),
-		startTime = os.clock(),
 	})
+	self.stateMachine.data.totalLength = unitRaycast.getPathLength(wps)
+	self.stateMachine.data.startTime = os.clock()
 	self.stateMachine.data.waypoints = wps
+
+	self.isThinking = false
 end
 
 function SMUnit.hasLineOfSight(self: SMUnit, target: SMUnit): boolean
@@ -223,11 +226,11 @@ function SMUnit.target(self: SMUnit, target: SMUnit)
 
 	local firstShotDelay = math.random() * 0.35
 	self:replicatedTransition("targeting", {
-		startTime = os.clock(),
-		target = target.guid,
+		target = target.id,
 		firstShotDelay = firstShotDelay,
-		firstShotTs = os.clock() + firstShotDelay,
 	})
+	self.stateMachine.data.startTime = os.clock()
+	self.stateMachine.data.firstShotTs = os.clock() + firstShotDelay
 	self.stateMachine.data.target = target
 end
 

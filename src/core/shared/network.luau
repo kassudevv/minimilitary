@@ -2,8 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TypedRemote = require(ReplicatedStorage.Packages.TypedRemote)
 local plotTypes = require("../../plots/shared/types")
-local stateMachine = require("../../units/shared/stateMachine")
-local unitTypes = require("../../units/shared/types")
+
 type RF<T..., R...> = TypedRemote.Function<T..., R...>
 type RE<T...> = TypedRemote.Event<T...>
 type URE<T...> = TypedRemote.UnreliableEvent<T...>
@@ -21,16 +20,12 @@ return {
 	Units = {
 		RequestUnits = RE("A") :: RE<>, -- player loaded into plot, spawn units
 
-		LoadUnits = RE("B") :: RE<{ unitTypes.UnitSnapshot }>, -- replicate unit to client
-		DestroyUnits = RE("C") :: RE<{ string }>, -- remove unit from client
+		LoadUnits = RE("B") :: RE<buffer>, -- replicate unit to client
 
 		RequestPath = RE("D") :: RE<Vector3>, -- request unit pathfinding target
 		MoveUnit = RE("E") :: RE<buffer, any>, -- replicate unit moveTo waypoints
 
-		StartTargeting = RE("F") :: RE<buffer, buffer>, -- replicates targeting for clients
-		StopTargeting = RE("G") :: RE<buffer>, -- replicates targeting for clients
-
-		ApplyPendingHit = RE("H") :: RE<string>,
+		ApplyPendingHit = RE("H") :: RE<number>,
 
 		ReplicateSM = RE("I") :: RE<buffer, { [string]: any }>,
 		ReplicateHealth = RE("J") :: RE<buffer>,

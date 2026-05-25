@@ -3,10 +3,13 @@ local SMUnit = require("./unit")
 local unitRaycast = require("@game/ReplicatedStorage/src/units/shared/unitRaycast")
 
 local function getAttackPosition(unit: SMUnit.SMUnit, target, hasLos: boolean): Vector3?
-	local range = unit.def.range * math.random(75, 85) * 0.01
-
+	local range = unit.def.range * math.random(85, 95) * 0.01
 	local dist = (unit.pawn.Position - target.pawn.Position).Magnitude
 	range = math.min(range, dist)
+
+	if not hasLos then
+		range = unit.def.range * math.random(10, 20) * 0.01
+	end
 
 	-- flying units don't need LoS pathing
 	if unit.def.movementMode == "flying" or hasLos then

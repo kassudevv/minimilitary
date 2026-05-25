@@ -3,7 +3,6 @@ local Workspace = game:GetService("Workspace")
 local SMUnit = require("../units/server/unit")
 local SMUnits = require("../units/server/stateMachineUnit")
 local attribute = require("@game/ReplicatedStorage/src/accounts/shared/utils/attribute")
-local draw = require("@game/ReplicatedStorage/src/core/shared/draw")
 local fonts = require("@game/ReplicatedStorage/src/core/client/ui/utils/fonts")
 local waitFor = require("@game/ReplicatedStorage/src/core/shared/waitFor")
 
@@ -16,6 +15,7 @@ type OutpostData = {
 	root: Folder,
 	guid: string,
 	units: { SMUnit.SMUnit },
+	spawners: { Part },
 }
 
 export type Outpost = setmetatable<OutpostData, typeof(Outpost)>
@@ -27,29 +27,28 @@ function Outpost.new(guid: string, root: Folder): Outpost
 
 	self.guid = guid
 	self.root = root
+	self.spawners = {}
 
 	waitFor.Descendant(root, "Spawns"):andThen(function(spawns: Folder)
-		local batchReplicate = {}
 		for _, spawn in spawns:GetDescendants() do
 			if not spawn:IsA("Part") then
 				continue
 			end
 			spawn.Parent = workspace.Camera
 
+			table.insert(self.spawners, spawn)
+		end
+
+		local batchReplicate = {}
+		for _, spawner in self.spawners do
 			table.insert(
 				batchReplicate,
 				SMUnits:SpawnUnit({
-					unitId = unitSpawnAttr.get(spawn) or "gunner",
-					position = spawn.CFrame,
+					unitId = unitSpawnAttr.get(spawner) or "gunner",
+					position = spawner.CFrame,
 					replicate = false,
 				})
 			)
-
-			-- draw.text(
-			-- 	spawn.Position + Vector3.new(0, 10, 0),
-			-- 	`{unitSpawnAttr.get(spawn) or "attr missing"}`,
-			-- 	Color3.fromHex("#000000")
-			-- )
 		end
 		SMUnits:ReplicateUnits(batchReplicate)
 	end)
@@ -57,7 +56,11 @@ function Outpost.new(guid: string, root: Folder): Outpost
 	local env = root:FindFirstChild("Env") :: Folder
 	for _, p in env:GetDescendants() do
 		if p:IsA("BasePart") then
-			p.Parent = Workspace.PVE:FindFirstChild("LineOfSightBlockers")
+			local parent = Workspace.PVE:FindFirstChild("LineOfSightBlockers")
+			p.Parent = parent
+			if p.Name == "Collider" then
+				p.Transparency = 1
+			end
 		end
 	end
 

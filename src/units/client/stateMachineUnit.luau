@@ -25,7 +25,6 @@ SMUnit.__index = SMUnit
 
 type SMUnitData = {
 	def: types.Unit,
-	guid: string,
 	id: number,
 	owner: string,
 
@@ -51,9 +50,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.def = def
 	self.owner = snapshot.owner
 
-	self.guid = snapshot.guid
-	self.id = index.des(snapshot.id)
-	index.register(self.guid, self.id)
+	self.id = snapshot.id
 
 	self.health = def.maxHealth
 	self.lastProjectileTs = 0
@@ -145,8 +142,12 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				end,
 				tick = function(dt)
 					local target = self.stateMachine.data.target :: SMUnit
-					local distance =
-						unitRaycast.getPlanarDistance(self.model:GetPivot().Position, target.model:GetPivot().Position)
+					local distance = target.stateMachine.state ~= "dead"
+							and unitRaycast.getPlanarDistance(
+								self.model:GetPivot().Position,
+								target.model:GetPivot().Position
+							)
+						or 0
 					if target.stateMachine.state == "dead" or (distance > self.def.range) then
 						self.stateMachine:transition("idle" :: stateMachine.State, {})
 						return
@@ -210,7 +211,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 							self.owner == Players.LocalPlayer.Name
 							or (self.owner == "pve" and target.owner == Players.LocalPlayer.Name)
 						then
-							network.Units.ApplyPendingHit:FireServer(target.guid)
+							network.Units.ApplyPendingHit:FireServer(target.id)
 						end
 					end
 				end,
@@ -242,6 +243,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
+	self.healthBarGui.MaxDistance = 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	task.spawn(function()
@@ -274,7 +276,10 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 			Workspace:Raycast(snapshot.position.Position + Vector3.new(0, 100, 0), -Vector3.yAxis * 150, params)
 		if ground then
 			self.model:PivotTo(
-				CFrame.new(ground.Position + Vector3.new(0, self.def.offset, 0)) * snapshot.position.Rotation
+				CFrame.new(
+					ground.Position
+						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 16 or 0), 0)
+				) * snapshot.position.Rotation
 			)
 		end
 	end)
@@ -286,6 +291,7 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	self.health = amt
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.maxHealth, 1)
+	self.healthBarGui.MaxDistance = 256
 end
 
 function SMUnit.faceTarget(self: SMUnit, target: Vector3)
@@ -362,40 +368,40 @@ function SMUnits.init(self: SMUnits)
 
 	network.Units.ReplicateHealth.OnClientEvent:Connect(function(buf: buffer)
 		local values = encoder.decodeHealth(buf)
-		local guid = index.get(values.id)
 
-		if not self.units[guid] then
+		if not self.units[values.id] then
 			return
 		end
 
-		self.units[guid]:setHealth(values.health)
+		self.units[values.id]:setHealth(values.health)
 	end)
 
 	network.Units.ReplicateSM.OnClientEvent:Connect(function(buf: buffer, data: { [string]: any })
 		local values = encoder.decodeSM(buf)
-		local guid = index.get(values.id)
 
 		for _, u in self.units do
-			if u.guid ~= guid then
+			if u.id ~= values.id then
 				continue
 			end
 
 			if values.state == "moving" then
 				data["startTime"] = os.clock()
 				data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
+				data["totalLength"] = unitRaycast.getPathLength(data["waypoints"])
 			end
 
 			if values.state == "targeting" then
 				data["target"] = TableUtil.Find(self.units, function(u: SMUnit)
-					return u.guid == data.target
+					return u.id == data.target
 				end)
 				data["firstShotTs"] = os.clock() + data.firstShotDelay
+				data["startTime"] = os.clock()
 			end
 
 			if values.state == "dead" then
 				task.delay(10, function()
-					self.units[guid]:cleanup()
-					self.units[guid] = nil
+					self.units[values.id]:cleanup()
+					self.units[values.id] = nil
 				end)
 			end
 
@@ -405,16 +411,18 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
+	network.Units.LoadUnits.OnClientEvent:Connect(function(buf: buffer)
+		local snapshots = encoder.decodeUnits(buf)
 		for _, snapshot in snapshots do
-			if self.units[snapshot.guid] then
+			if self.units[snapshot.id] then
 				print("attempted duplicate unit load")
 				continue
 			end
 
 			local unit = constants.getUnit(snapshot.itemId)
 			assert(unit ~= nil, "unit is nil")
-			self.units[snapshot.guid] = SMUnit.new(unit, snapshot)
+
+			self.units[snapshot.id] = SMUnit.new(unit, snapshot)
 			task.wait()
 		end
 	end)
@@ -451,7 +459,7 @@ function SMUnits.initControls(self: SMUnits)
 end
 
 type SMUnits = typeof(SMUnits) & {
-	units: { [string]: SMUnit },
+	units: { [number]: SMUnit },
 }
 
 return SMUnits :: SMUnits

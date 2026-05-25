@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local waitFor = require("../../core/shared/waitFor")
 
 local losParams = RaycastParams.new()
 local losInitialized = false
@@ -119,6 +120,18 @@ local function initRaycastParams()
 	end)
 	npcs.ChildRemoved:Connect(function(npc)
 		removeIgnored(npc)
+	end)
+
+	waitFor.Descendant(Workspace, "LineOfSightBlockers"):andThen(function(obj: Folder)
+		for _, p in obj:GetDescendants() do
+			addIgnored(p)
+		end
+		obj.ChildAdded:Connect(function(npc)
+			addIgnored(npc)
+		end)
+		obj.ChildRemoved:Connect(function(npc)
+			removeIgnored(npc)
+		end)
 	end)
 
 	for _, player in Players:GetPlayers() do
