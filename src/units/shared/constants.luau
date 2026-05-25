@@ -124,7 +124,7 @@ local function getUnit(itemId: string): Unit?
 	if not u then
 		return nil
 	end
-	u.id = itemId
+	u.itemId = itemId
 	return u
 end
 

@@ -1,4 +1,4 @@
 local Charm = require("../../../Packages/Charm")
 return {
-	movementMode = Charm.atom(false),
+	movementMode = Charm.atom(true),
 }

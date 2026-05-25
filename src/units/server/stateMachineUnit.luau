@@ -1,6 +1,7 @@
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local SMUnit = require("../server/unit")
+local Squash = require("@game/ReplicatedStorage/Packages/Squash")
 local TableUtil = require("@game/ReplicatedStorage/Packages/TableUtil")
 local accountStore = require("../../accounts/server/accountStore")
 local accounts = require("../../accounts/server")

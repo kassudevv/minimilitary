@@ -11,6 +11,7 @@ local TableUtil = require("../../../Packages/TableUtil")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
 local flags = require("./flags")
+local index = require("../shared/index")
 local network = require("../../core/shared/network")
 local particles = require("./particles")
 local projectiles = require("./projectiles")
@@ -25,6 +26,7 @@ SMUnit.__index = SMUnit
 type SMUnitData = {
 	def: types.Unit,
 	guid: string,
+	id: number,
 	owner: string,
 
 	stateMachine: stateMachine.StateMachine,
@@ -47,8 +49,12 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	local self = setmetatable({} :: SMUnitData, SMUnit)
 
 	self.def = def
-	self.guid = snapshot.guid
 	self.owner = snapshot.owner
+
+	self.guid = snapshot.guid
+	self.id = index.des(snapshot.id)
+	index.register(self.guid, self.id)
+
 	self.health = def.maxHealth
 	self.lastProjectileTs = 0
 	self.cache = {}
@@ -354,45 +360,50 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	network.Units.ReplicateHealth.OnClientEvent:Connect(function(guid: string, amt: number)
-		local u = self.units[guid]
-		if u then
-			u:setHealth(amt)
+	network.Units.ReplicateHealth.OnClientEvent:Connect(function(buf: buffer)
+		local values = encoder.decodeHealth(buf)
+		local guid = index.get(values.id)
+
+		if not self.units[guid] then
+			return
 		end
+
+		self.units[guid]:setHealth(values.health)
 	end)
 
-	network.Units.ReplicateSM.OnClientEvent:Connect(
-		function(guid: string, state: stateMachine.State, data: { [string]: any })
-			for _, u in self.units do
-				if u.guid ~= guid then
-					continue
-				end
+	network.Units.ReplicateSM.OnClientEvent:Connect(function(buf: buffer, data: { [string]: any })
+		local values = encoder.decodeSM(buf)
+		local guid = index.get(values.id)
 
-				if state == "moving" then
-					data["startTime"] = os.clock()
-					data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
-				end
-
-				if state == "targeting" then
-					data["target"] = TableUtil.Find(self.units, function(u: SMUnit)
-						return u.guid == data.target
-					end)
-					data["firstShotTs"] = os.clock() + data.firstShotDelay
-				end
-
-				if state == "dead" then
-					task.delay(10, function()
-						self.units[guid]:cleanup()
-						self.units[guid] = nil
-					end)
-				end
-
-				u.stateMachine:transition(state, data)
-
-				return
+		for _, u in self.units do
+			if u.guid ~= guid then
+				continue
 			end
+
+			if values.state == "moving" then
+				data["startTime"] = os.clock()
+				data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
+			end
+
+			if values.state == "targeting" then
+				data["target"] = TableUtil.Find(self.units, function(u: SMUnit)
+					return u.guid == data.target
+				end)
+				data["firstShotTs"] = os.clock() + data.firstShotDelay
+			end
+
+			if values.state == "dead" then
+				task.delay(10, function()
+					self.units[guid]:cleanup()
+					self.units[guid] = nil
+				end)
+			end
+
+			u.stateMachine:transition(values.state, data)
+
+			return
 		end
-	)
+	end)
 
 	network.Units.LoadUnits.OnClientEvent:Connect(function(snapshots: { types.UnitSnapshot })
 		for _, snapshot in snapshots do
@@ -407,7 +418,7 @@ function SMUnits.init(self: SMUnits)
 			task.wait()
 		end
 	end)
-	task.wait(1)
+	task.wait()
 	network.Units.RequestUnits:FireServer()
 end
 

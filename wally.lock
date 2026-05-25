@@ -18,6 +18,11 @@ version = "0.4.11"
 dependencies = []
 
 [[package]]
+name = "data-oriented-house/squash"
+version = "5.0.0"
+dependencies = []
+
+[[package]]
 name = "evaera/promise"
 version = "4.0.0"
 dependencies = []
@@ -35,7 +40,7 @@ dependencies = [["Promise", "evaera/promise@4.0.0"]]
 [[package]]
 name = "kaspar/syncedstores"
 version = "0.1.0"
-dependencies = [["Charm", "littensy/charm@0.11.0-rc.6"], ["CharmSync", "littensy/charm-sync@0.4.0-rc.7"], ["Janitor", "howmanysmall/janitor@1.18.3"], ["Lyra", "010devx101/lyra@0.6.3"], ["PromiseTyped", "maximumadhd/promise-typed@1.0.0"], ["Ripple", "littensy/vide-ripple@0.10.2"], ["TableUtil", "sleitnick/table-util@1.2.1"], ["TypedRemote", "sleitnick/typed-remote@0.3.0"], ["Vide", "centau/vide@0.4.0"], ["VideCharm", "littensy/vide-charm@0.4.0-rc.5"], ["WaitFor", "sleitnick/wait-for@1.0.0"], ["gt", "corecii/greentea@0.4.11"]]
+dependencies = [["Charm", "littensy/charm@0.11.0-rc.6"], ["CharmSync", "littensy/charm-sync@0.4.0-rc.7"], ["Janitor", "howmanysmall/janitor@1.18.3"], ["Lyra", "010devx101/lyra@0.6.3"], ["PromiseTyped", "maximumadhd/promise-typed@1.0.0"], ["Ripple", "littensy/vide-ripple@0.10.2"], ["Squash", "data-oriented-house/squash@5.0.0"], ["TableUtil", "sleitnick/table-util@1.2.1"], ["TypedRemote", "sleitnick/typed-remote@0.3.0"], ["Vide", "centau/vide@0.4.0"], ["VideCharm", "littensy/vide-charm@0.4.0-rc.5"], ["WaitFor", "sleitnick/wait-for@1.0.0"], ["gt", "corecii/greentea@0.4.11"]]
 
 [[package]]
 name = "littensy/charm"

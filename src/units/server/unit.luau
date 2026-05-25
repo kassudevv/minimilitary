@@ -1,6 +1,7 @@
 local PathfindingService = game:GetService("PathfindingService")
 local Workspace = game:GetService("Workspace")
 local encoder = require("@game/ReplicatedStorage/src/units/shared/encoder")
+local index = require("@game/ReplicatedStorage/src/units/shared/index")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local stateMachine = require("@game/ReplicatedStorage/src/units/shared/stateMachine")
 local types = require("@game/ReplicatedStorage/src/units/shared/types")
@@ -12,6 +13,7 @@ SMUnit.__index = SMUnit
 type SMUnitData = {
 	def: types.Unit,
 	guid: string,
+	id: number,
 	owner: string,
 	pawn: BasePart,
 	stateMachine: stateMachine.StateMachine,
@@ -31,6 +33,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.def = def
 	self.guid = guid
 	self.owner = owner and owner.Name or "pve"
+	self.id = index.registerNew(guid)
 
 	self.health = def.maxHealth
 	self.damageQueue = {}
@@ -143,7 +146,13 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 end
 
 function SMUnit.snapshot(self: SMUnit): types.UnitSnapshot
-	return { unitId = self.def.id or "gunner", position = self.pawn.CFrame, guid = self.guid, owner = self.owner }
+	return {
+		unitId = self.def.id or "gunner",
+		position = self.pawn.CFrame,
+		guid = self.guid,
+		owner = self.owner,
+		id = index.ser(self.id),
+	}
 end
 
 function SMUnit.move(self: SMUnit, target: Vector3)
@@ -223,7 +232,7 @@ end
 
 function SMUnit.replicatedTransition(self: SMUnit, newState: stateMachine.State, data: { [string]: any })
 	self.stateMachine:transition(newState, data)
-	network.Units.ReplicateSM:FireAllClients(self.guid, newState, data)
+	network.Units.ReplicateSM:FireAllClients(encoder.encodeSM(self.id, newState, data))
 end
 
 function SMUnit.damage(self: SMUnit, amt: number)
@@ -232,7 +241,7 @@ function SMUnit.damage(self: SMUnit, amt: number)
 	end
 
 	self.health -= amt
-	network.Units.ReplicateHealth:FireAllClients(self.guid, self.health)
+	network.Units.ReplicateHealth:FireAllClients(encoder.encodeHealth(self.id, self.health))
 
 	if self.health <= 0 then
 		self.replicatedTransition(self, "dead", {})

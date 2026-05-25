@@ -3,10 +3,11 @@ export type UnitSnapshot = {
 	owner: string,
 	position: CFrame,
 	guid: string,
+	id: buffer,
 }
 
 export type Unit = {
-	id: string?,
+	itemId: string?,
 	name: string,
 
 	maxHealth: number,

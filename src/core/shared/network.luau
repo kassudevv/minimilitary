@@ -32,8 +32,8 @@ return {
 
 		ApplyPendingHit = RE("H") :: RE<string>,
 
-		ReplicateSM = RE("I") :: RE<string, stateMachine.State, { [string]: any }>,
-		ReplicateHealth = RE("J") :: RE<string, number>,
+		ReplicateSM = RE("I") :: RE<buffer, { [string]: any }>,
+		ReplicateHealth = RE("J") :: RE<buffer>,
 	},
 
 	FireAllExcept = function(remote: any, plr: Player, ...)
