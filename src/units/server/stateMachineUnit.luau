@@ -42,30 +42,6 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	-- local cursor = 1
-	-- Tick.every(1 / 2, function()
-	-- 	debug.profilebegin("spreadticke")
-
-	-- 	local processed = 0
-	-- 	local maxUnits = 64
-
-	-- 	while processed < maxUnits do
-	-- 		local u = self.unitsArr[cursor]
-
-	-- 		if not u then
-	-- 			cursor = 1
-	-- 			break
-	-- 		end
-
-	-- 		targeting.tickUnit(u, self.targetGrid)
-
-	-- 		cursor += 1
-	-- 		processed += 1
-	-- 	end
-
-	-- 	debug.profileend()
-	-- end)
-
 	--networking events
 	network.Units.RequestPath.OnServerEvent:Connect(function(plr: Player, target: Vector3)
 		local flyingUnits: { SMUnit.SMUnit }, groundUnits: { SMUnit.SMUnit } = {}, {}
@@ -173,6 +149,8 @@ function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit.SMUnit)
 	self.units[unit.guid] = nil
 
 	unit:cleanup()
+
+	network.Units.DestroyUnits:FireAllClients({ unit.id })
 end
 
 function SMUnits.ReplicateUnits(self: SMUnits, units: { SMUnit.SMUnit })

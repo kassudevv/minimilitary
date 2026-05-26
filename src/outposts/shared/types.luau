@@ -9,6 +9,7 @@ export type Outpost = {
 export type OutpostSnapshot = {
 	guid: string,
 	root: Folder,
+	rootName: string,
 	colliders: { BasePart },
 }
 

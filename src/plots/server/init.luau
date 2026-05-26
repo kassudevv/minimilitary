@@ -1,4 +1,5 @@
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Building = require("@self/Building")
@@ -62,7 +63,7 @@ function Plot.loadTemplate(self: Plot)
 	self.template = Workspace.Template:Clone() :: Model
 	self.template:PivotTo(self.plotSpawn.CFrame)
 	self.template.Parent = workspace
-	self.template.Name = `template_{self.index}`
+	self.template.Name = `plot_{HttpService:GenerateGUID(false)}`
 end
 
 function Plot.reset(self: Plot)
@@ -111,21 +112,13 @@ function Plot.loadState(self: Plot, plr: Player)
 end
 
 function Plot.snapshot(self: Plot): types.PlotSnapshot
-	return { id = self.index, template = self.template, area = self.area:getLocked() }
+	return { id = self.index, template = self.template, area = self.area:getLocked(), templateName = self.template.Name }
 end
 
 function Plot.charInit(self: Plot)
 	if not self.owner then
 		return
 	end
-
-	-- local char = self.owner.Character or self.owner.CharacterAdded:Wait()
-	-- char:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))
-	-- local h = char:WaitForChild("Humanoid") :: Humanoid
-	-- h.WalkSpeed = 120
-
-	-- self.janitor:Add(self.owner.CharacterAdded:Connect(function(newChar)
-	-- end))
 
 	observers.observeCharacter(self.owner, function(char: Model)
 		char:PivotTo(self.template:GetPivot() * CFrame.new(0, 20, 0))

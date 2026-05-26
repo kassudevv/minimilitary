@@ -10,6 +10,7 @@ local ClientConfig = require("../../core/client/ClientConfig")
 local Promise = require("../../../Packages/PromiseTyped")
 local TableUtil = require("../../../Packages/TableUtil")
 local TaskQueue = require("../../core/shared/TaskQueue")
+local Tick = require("../../core/shared/Tick")
 local constants = require("../shared/constants")
 local encoder = require("../shared/encoder")
 local flags = require("./flags")
@@ -58,17 +59,13 @@ end)
 
 type UnitLOD = "HOT" | "WARM" | "COLD"
 local UnitLODPoints = {
-	HOT_ENTER = 250 ^ 2,
-	HOT_EXIT = 350 ^ 2,
+	HOT_ENTER = 150 ^ 2,
+	HOT_EXIT = 200 ^ 2,
 
-	WARM_ENTER = 800 ^ 2,
-	WARM_EXIT = 1000 ^ 2,
+	WARM_ENTER = 300 ^ 2,
+	WARM_EXIT = 400 ^ 2,
 }
 local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
-	if true then
-		return "HOT"
-	end
-
 	local delta = unitPos - cameraPos
 	local distSq = delta:Dot(delta)
 
@@ -168,7 +165,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					local state = self.stateMachine.data
 					state.accum += dt
 
-					local tickRate = if self.LOD == "HOT" then 0.0 elseif self.LOD == "WARM" then 1 / 2 else 1
+					local tickRate = if self.LOD == "HOT" then 0.0 elseif self.LOD == "WARM" then 1 / 10 else 1
 					if state.accum < tickRate then
 						return
 					end
@@ -205,6 +202,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 						+ Vector3.new(0, (self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0), 0)
 
 					local cf = CFrame.new(pos) * state.rotation
+
 					bulkMoveQueue:Add({ state.root, cf })
 				end,
 				onExit = function(next)
@@ -440,29 +438,75 @@ local SMUnits = {}
 
 function SMUnits.init(self: SMUnits)
 	self.units = {}
+	self.unitsArr = {}
 
 	unitRaycast:initRaycastParams()
 	unitRaycast:initLosRaycastParams()
 
 	self:initControls()
 
-	RunService.Heartbeat:Connect(function(dt)
-		for _, u in self.units do
+	Tick.every(0, function(dt)
+		for _, u in self.unitsArr do
 			u.stateMachine:tick(dt)
 		end
 	end)
 
-	local lodCheckAccum = 0
-	RunService.Heartbeat:Connect(function(dt)
-		lodCheckAccum += dt
-		if lodCheckAccum < 1 / 4 then
-			return
-		end
-		lodCheckAccum = 0
+	-- local lodCheckAccum = 0
+	-- RunService.Heartbeat:Connect(function(dt)
+	-- 	lodCheckAccum += dt
+	-- 	if lodCheckAccum < 1 / 4 then
+	-- 		return
+	-- 	end
+	-- 	lodCheckAccum = 0
 
+	-- 	local to = Workspace.Camera.CFrame.Position
+	-- 	for i, u in self.unitsArr do
+	-- 		u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
+	-- 		if u.LOD == "COLD" and u.model.Parent ~= nil then
+	-- 			u.model.Parent = nil
+	-- 		elseif u.LOD ~= "COLD" and u.model.Parent == nil then
+	-- 			u.model.Parent = Workspace.NPCs
+	-- 		end
+	-- 	end
+	-- end)
+
+	local cursor = 1
+	Tick.every(0, function()
+		local processed = 0
+		local maxPerTick = 3
 		local to = Workspace.Camera.CFrame.Position
-		for _, u in self.units do
+
+		while processed < maxPerTick do
+			local k = self.unitsArr[cursor]
+			if not k then
+				cursor = 1
+				break
+			end
+			local u = self.unitsArr[cursor]
+
 			u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
+
+			-- distance culling
+			if u.LOD == "COLD" and u.model.Parent ~= nil then
+				u.model.Parent = nil
+				for _, p in u.model:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.CanCollide = false
+						p.Anchored = true
+					end
+				end
+			elseif u.LOD ~= "COLD" and u.model.Parent == nil then
+				u.model.Parent = Workspace.NPCs
+				for _, p in u.model:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.CanCollide = false
+						p.Anchored = p.Name == "HumanoidRootPart"
+					end
+				end
+			end
+
+			cursor += 1
+			processed += 1
 		end
 	end)
 
@@ -479,39 +523,37 @@ function SMUnits.init(self: SMUnits)
 	network.Units.ReplicateSM.OnClientEvent:Connect(function(buf: buffer, data: { [string]: any })
 		local values = encoder.decodeSM(buf)
 
-		for _, u in self.units do
-			if u.id ~= values.id then
-				continue
-			end
-
-			if values.state == "moving" then
-				data["path"] = unitRaycast.buildPathData(encoder.decodeWaypoints(data["waypoints"]))
-				-- data["startTime"] = os.clock()
-				-- data["waypoints"] = encoder.decodeWaypoints(data["waypoints"])
-				-- data["totalLength"] = unitRaycast.getPathLength(data["waypoints"])
-			end
-
-			if values.state == "targeting" then
-				data["target"] = TableUtil.Find(self.units, function(u: SMUnit)
-					return u.id == data.target
-				end)
-				data["firstShotTs"] = os.clock() + data.firstShotDelay
-				data["startTime"] = os.clock()
-
-				if not data["target"] then
-					return
-				end
-			end
-
-			if values.state == "dead" then
-				task.delay(10, function()
-					self.units[values.id]:cleanup()
-					self.units[values.id] = nil
-				end)
-			end
-
-			u.stateMachine:transition(values.state, data)
+		local u = self.units[values.id]
+		if not u then
 			return
+		end
+
+		if values.state == "moving" then
+			data["path"] = unitRaycast.buildPathData(encoder.decodeWaypoints(data["waypoints"]))
+		end
+
+		if values.state == "targeting" then
+			data["target"] = TableUtil.Find(self.units, function(u: SMUnit)
+				return u.id == data.target
+			end)
+			data["firstShotTs"] = os.clock() + data.firstShotDelay
+			data["startTime"] = os.clock()
+
+			if not data["target"] then
+				return
+			end
+		end
+
+		u.stateMachine:transition(values.state, data)
+		return
+	end)
+
+	network.Units.DestroyUnits.OnClientEvent:Connect(function(ids: { number })
+		for _, id in ids do
+			local u = self.units[id]
+			if u then
+				self:DestroyUnit(u)
+			end
 		end
 	end)
 
@@ -526,12 +568,26 @@ function SMUnits.init(self: SMUnits)
 			local unit = constants.getUnit(snapshot.itemId)
 			assert(unit ~= nil, "unit is nil")
 
-			self.units[snapshot.id] = SMUnit.new(unit, snapshot)
+			local u = SMUnit.new(unit, snapshot)
+			table.insert(self.unitsArr, u)
+			self.units[snapshot.id] = u
 			task.wait()
 		end
 	end)
 	task.wait()
 	network.Units.RequestUnits:FireServer()
+end
+
+function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit)
+	local idx = table.find(self.unitsArr, unit)
+	if idx then
+		local n = #self.unitsArr
+		self.unitsArr[idx] = self.unitsArr[n]
+		self.unitsArr[n] = nil
+	end
+	self.units[unit.id] = nil
+
+	unit:cleanup()
 end
 
 function SMUnits.initControls(self: SMUnits)
@@ -551,7 +607,7 @@ function SMUnits.initControls(self: SMUnits)
 				return
 			end
 
-			for _, u in self.units do
+			for _, u in self.unitsArr do
 				if u.owner == Players.LocalPlayer.Name then
 					u.stateMachine:transition("idle", {})
 				end
@@ -564,6 +620,7 @@ end
 
 type SMUnits = typeof(SMUnits) & {
 	units: { [number]: SMUnit },
+	unitsArr: { SMUnit },
 }
 
 return SMUnits :: SMUnits

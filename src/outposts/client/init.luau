@@ -10,7 +10,7 @@ local Outpost = {}
 Outpost.__index = Outpost
 
 type OutpostData = {
-	root: Folder,
+	root: Model,
 	setState: any,
 	getState: any,
 }
@@ -20,8 +20,10 @@ export type Outpost = setmetatable<OutpostData, typeof(Outpost)>
 function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 	local self = setmetatable({} :: OutpostData, Outpost)
 
-	self.root = snapshot.root
 	self.getState, self.setState = Charm.signal(types.outpostTemplate)
+
+	local err, root: Model = waitFor.Descendant(workspace, snapshot.rootName, 60 * 15):await()
+	self.root = root
 
 	local flagTween = Ripple.createTween(
 		0,
@@ -55,8 +57,8 @@ function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 		orange = Color3.fromHex("#ffb300"),
 		red = Color3.fromHex("#ff0000"),
 	}
-	print(self.root)
-	waitFor.Descendants(self.root, { "CaptureBeam", "CaptureMesh", "Owner" }):andThen(function(obj: { any })
+
+	waitFor.Descendants(self.root, { "CaptureBeam", "CaptureMesh", "Owner" }, 60 * 15):andThen(function(obj: { any })
 		local captureBeam = obj[1] :: Beam
 		local captureMesh = obj[2] :: MeshPart
 		local ownerLbl = obj[3] :: TextLabel

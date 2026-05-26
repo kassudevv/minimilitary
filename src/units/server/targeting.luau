@@ -114,19 +114,6 @@ function tickUnit(unit: SMUnit.SMUnit, targetGrid: spatialGrid.SpatialGrid)
 		end
 		return
 	end
-
-	-- -- 5. Out of attack range, no LoS — PvE holds position
-	-- if unit.owner == "pve" then
-	-- 	return
-	-- end
-
-	-- -- 6. Player unit — find a LoS position and move there
-	-- if s.anyDist <= s.targetRange then
-	-- 	local pos = getAttackPosition(unit, s.anyTarget, false)
-	-- 	if pos then
-	-- 		unit:move(pos)
-	-- 	end
-	-- end
 end
 
 return {

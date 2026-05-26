@@ -4,6 +4,7 @@ local conf = require("@game/ReplicatedStorage/src/plots/shared/conf")
 local grid = require("@game/ReplicatedStorage/src/plots/shared/grid")
 local network = require("@game/ReplicatedStorage/src/core/shared/network")
 local types = require("@game/ReplicatedStorage/src/plots/shared/types")
+local waitFor = require("../core/shared/waitFor")
 
 local Plot = {}
 Plot.__index = Plot
@@ -22,10 +23,11 @@ export type Plot = setmetatable<PlotData, typeof(Plot)>
 function Plot.new(snapshot: types.PlotSnapshot): Plot
 	local self = setmetatable({} :: PlotData, Plot)
 
+	local err, template: Model = waitFor.Descendant(workspace, snapshot.templateName):await()
+	snapshot.template = template
 	self.snapshot = snapshot
 
-	print(snapshot)
-	local gridStart = self.snapshot.template:WaitForChild("StartGrid") :: BasePart
+	local gridStart: BasePart = template:WaitForChild("StartGrid", 10) :: BasePart
 
 	self.buildGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_BUILD_SIZE)
 	self.buildSnapGrid = grid.new(gridStart.CFrame * CFrame.new(0, 0, 0), conf.GRID_BUILD_SNAP_SIZE)

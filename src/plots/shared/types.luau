@@ -3,6 +3,7 @@ local items = require("@game/ReplicatedStorage/src/accounts/shared/items")
 export type PlotSnapshot = {
 	id: number,
 	template: Model,
+	templateName: string,
 	area: { [string]: Model },
 }
 

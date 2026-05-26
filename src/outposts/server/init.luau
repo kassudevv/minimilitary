@@ -56,6 +56,7 @@ function Outpost.new(guid: string, root: Folder): Outpost
 
 	self.guid = guid
 	self.root = root
+	self.root.Name = `outpost_{HttpService:GenerateGUID(false)}`
 	self.spawners = {}
 	self.colliders = {}
 
@@ -257,6 +258,7 @@ function Outpost.snapshot(self: Outpost): types.OutpostSnapshot
 	return {
 		guid = self.guid,
 		root = self.root,
+		rootName = self.root.Name,
 		colliders = self.colliders,
 	}
 end

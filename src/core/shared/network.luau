@@ -22,6 +22,7 @@ return {
 		RequestUnits = RE("A") :: RE<>, -- player loaded into plot, spawn units
 
 		LoadUnits = RE("B") :: RE<buffer>, -- replicate unit to client
+		DestroyUnits = RE("J") :: RE<{ number }>,
 
 		RequestPath = RE("C") :: RE<Vector3>, -- request unit pathfinding target
 		MoveUnit = RE("D") :: RE<buffer, any>, -- replicate unit moveTo waypoints
