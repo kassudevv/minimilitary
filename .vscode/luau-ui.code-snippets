@@ -1,0 +1,299 @@
+{
+  "Luau UI Setup": {
+    "prefix": "vimport",
+    "body": [
+      "local Vide = require(\"../Vide\")",
+      "",
+      "local create = Vide.create",
+      "local changed = Vide.changed",
+      "local source = Vide.source",
+      "local derive = Vide.derive",
+      "local effect = Vide.effect",
+      "local cleanup = Vide.cleanup",
+      "local show = Vide.show",
+      "local values = Vide.values",
+      "local indexes = Vide.indexes",
+      "local spring = Vide.spring",
+      "local mount = Vide.mount",
+      "local batch = Vide.batch",
+      "",
+      "local fo = UDim2.fromOffset",
+      "local fu = UDim2.new",
+      "local fs = UDim2.fromScale",
+      "local v = Vector2.new",
+      "",
+      "local auto = Enum.AutomaticSize",
+      "local fill = Enum.FillDirection",
+      "local hAlign = Enum.HorizontalAlignment",
+      "local vAlign = Enum.VerticalAlignment",
+      "local sort = Enum.SortOrder",
+      "local scale = Enum.ScaleType",
+      "local stroke = Enum.StrokeSizingMode",
+      "local border = Enum.BorderStrokePosition"
+    ],
+    "description": "Luau UI (Vide) setup with common imports and shortcuts"
+  },
+
+  "AnchorPoint": {
+    "prefix": "ap",
+    "body": ["AnchorPoint = v(${1:0.5}, ${2:0.5}),"]
+  },
+
+  "Position Scale": {
+    "prefix": "ps",
+    "body": ["Position = fs(${1:0.5}, ${2:0.5}),"]
+  },
+
+  "Position Offset": {
+    "prefix": "po",
+    "body": ["Position = fo(${1:0}, ${2:0}),"]
+  },
+
+  "Position UDim2": {
+    "prefix": "pu",
+    "body": ["Position = fu(${1:0}, ${2:0}, ${3:0}, ${4:0}),"]
+  },
+
+  "Size Scale": {
+    "prefix": "sizes",
+    "body": ["Size = fs(${1:1}, ${2:1}),"]
+  },
+
+  "Size Offset": {
+    "prefix": "sizeo",
+    "body": ["Size = fo(${1:100}, ${2:100}),"]
+  },
+
+  "Size UDim2": {
+    "prefix": "sizeu",
+    "body": ["Size = fu(${1:1}, ${2:0}, ${3:1}, ${4:0}),"]
+  },
+
+  "Background Transparency 1": {
+    "prefix": "bg1",
+    "body": ["BackgroundTransparency = 1,"]
+  },
+
+  "Background Transparency 0": {
+    "prefix": "bg0",
+    "body": ["BackgroundTransparency = 0,"]
+  },
+
+  "AutomaticSize XY": {
+    "prefix": "autoxy",
+    "body": ["AutomaticSize = Enum.AutomaticSize.XY,"]
+  },
+
+  "AutomaticSize X": {
+    "prefix": "autox",
+    "body": ["AutomaticSize = Enum.AutomaticSize.X,"]
+  },
+
+  "AutomaticSize Y": {
+    "prefix": "autoy",
+    "body": ["AutomaticSize = Enum.AutomaticSize.Y,"]
+  },
+
+  "UICorner": {
+    "prefix": "corner",
+    "body": [
+      "create(\"UICorner\")({",
+      "\tCornerRadius = UDim.new(0, ${1:8}),",
+      "}),"
+    ]
+  },
+
+  "UIStroke": {
+    "prefix": "stroke",
+    "body": [
+      "create(\"UIStroke\")({",
+      "\tColor = ${1:colors.slate[\"50\"]},",
+      "\tThickness = ${2:2},",
+      "\tTransparency = ${3:0},",
+      "}),"
+    ]
+  },
+
+  "UIStroke Inner": {
+    "prefix": "strokei",
+    "body": [
+      "create(\"UIStroke\")({",
+      "\tStrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,",
+      "\tBorderStrokePosition = Enum.BorderStrokePosition.Inner,",
+      "\tThickness = ${1:0.03},",
+      "\tColor = ${2:colors.slate[\"50\"]},",
+      "\tTransparency = ${3:0.7},",
+      "}),"
+    ]
+  },
+
+  "UIStroke Outer": {
+    "prefix": "strokeo",
+    "body": [
+      "create(\"UIStroke\")({",
+      "\tStrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,",
+      "\tBorderStrokePosition = Enum.BorderStrokePosition.Outer,",
+      "\tThickness = ${1:0.03},",
+      "\tColor = ${2:colors.slate[\"950\"]},",
+      "\tTransparency = ${3:0},",
+      "}),"
+    ]
+  },
+
+  "Vertical UIListLayout": {
+    "prefix": "listv",
+    "body": [
+      "create(\"UIListLayout\")({",
+      "\tFillDirection = Enum.FillDirection.Vertical,",
+      "\tHorizontalAlignment = Enum.HorizontalAlignment.Center,",
+      "\tVerticalAlignment = Enum.VerticalAlignment.Top,",
+      "\tSortOrder = Enum.SortOrder.LayoutOrder,",
+      "\tPadding = UDim.new(0, ${1:8}),",
+      "}),"
+    ]
+  },
+
+  "Horizontal UIListLayout": {
+    "prefix": "listh",
+    "body": [
+      "create(\"UIListLayout\")({",
+      "\tFillDirection = Enum.FillDirection.Horizontal,",
+      "\tHorizontalAlignment = Enum.HorizontalAlignment.Left,",
+      "\tVerticalAlignment = Enum.VerticalAlignment.Center,",
+      "\tSortOrder = Enum.SortOrder.LayoutOrder,",
+      "\tPadding = UDim.new(0, ${1:8}),",
+      "}),"
+    ]
+  },
+
+  "Vertical Gradient": {
+    "prefix": "gradv",
+    "body": [
+      "create(\"UIGradient\")({",
+      "\tColor = gradient.create(${1:colors.blue[\"200\"]}, ${2:colors.blue[\"400\"]}),",
+      "\tRotation = 90,",
+      "}),"
+    ]
+  },
+
+  "Horizontal Gradient": {
+    "prefix": "grad",
+    "body": [
+      "create(\"UIGradient\")({",
+      "\tColor = gradient.create(${1:colors.blue[\"200\"]}, ${2:colors.blue[\"400\"]}),",
+      "}),"
+    ]
+  },
+
+  "Gradient Transparency": {
+    "prefix": "gradt",
+    "body": ["Transparency = gradient.transparency(${1:1}, ${2:0.5}),"]
+  },
+
+  "TextLabel": {
+    "prefix": "txt",
+    "body": [
+      "create(\"TextLabel\")({",
+      "\tBackgroundTransparency = 1,",
+      "\tAutomaticSize = Enum.AutomaticSize.XY,",
+      "\tTextColor3 = colors.slate[\"50\"],",
+      "\tFontFace = fonts.inter.semibold,",
+      "\tTextSize = ${1:24},",
+      "\tText = \"${2:Text}\",",
+      "}),"
+    ]
+  },
+
+  "Text Stroke": {
+    "prefix": "txtstroke",
+    "body": [
+      "create(\"UIStroke\")({",
+      "\tColor = colors.slate[\"900\"],",
+      "\tThickness = ${1:2},",
+      "\tTransparency = 0,",
+      "}),"
+    ]
+  },
+
+  "ImageLabel": {
+    "prefix": "img",
+    "body": [
+      "create(\"ImageLabel\")({",
+      "\tBackgroundTransparency = 1,",
+      "\tImage = ${1:images.Icon},",
+      "\tScaleType = Enum.ScaleType.Fit,",
+      "}),"
+    ]
+  },
+
+  "Card Frame": {
+    "prefix": "card",
+    "body": [
+      "create(\"Frame\")({",
+      "\tBackgroundTransparency = 0,",
+      "\tBackgroundColor3 = colors.slate[\"950\"],",
+      "",
+      "\tcreate(\"UICorner\")({",
+      "\t\tCornerRadius = UDim.new(0, 8),",
+      "\t}),",
+      "",
+      "\tcreate(\"UIStroke\")({",
+      "\t\tColor = colors.slate[\"50\"],",
+      "\t\tTransparency = 0.8,",
+      "\t}),",
+      "}),"
+    ]
+  },
+
+  "Frame": {
+    "prefix": "frame",
+    "body": ["create(\"Frame\")({", "\t$0", "}),"]
+  },
+
+  "ImageButton": {
+    "prefix": "ibtn",
+    "body": [
+      "create(\"ImageButton\")({",
+      "\tBackgroundTransparency = 1,",
+      "\tImage = ${1:images.Icon},",
+      "\tActivated = function()",
+      "\t\t$0",
+      "\tend,",
+      "}),"
+    ]
+  },
+
+  "Show": {
+    "prefix": "show",
+    "body": [
+      "show(function()",
+      "\treturn ${1:true}",
+      "end, function()",
+      "\treturn ${0}",
+      "end)"
+    ]
+  },
+
+  "Derive": {
+    "prefix": "derive",
+    "body": ["derive(function()", "\t$0", "end)"]
+  },
+
+  "Source": {
+    "prefix": "source",
+    "body": ["local ${1:value} = source(${2:false})"]
+  },
+
+  "UIPadding (uniform)": {
+    "prefix": "pad",
+    "description": "UIPadding with the same value on all sides",
+    "body": [
+      "create \"UIPadding\" {",
+      "\tPaddingTop    = UDim.new(0, ${1:8}),",
+      "\tPaddingBottom = UDim.new(0, ${1:8}),",
+      "\tPaddingLeft   = UDim.new(0, ${1:8}),",
+      "\tPaddingRight  = UDim.new(0, ${1:8}),",
+      "},"
+    ]
+  }
+}

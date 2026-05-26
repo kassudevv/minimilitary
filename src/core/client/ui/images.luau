@@ -6,6 +6,7 @@ return {
 	ContainerBG = "rbxassetid://134670407910211",
 	ContainerRed = "rbxassetid://132095640798349",
 	TilingDots = "rbxassetid://107681192851449",
+	TilingDots2 = "rbxassetid://89451258670903",
 	CloseButton = "rbxassetid://109061823374874",
 
 	Icons = {
