@@ -59,11 +59,11 @@ end)
 
 type UnitLOD = "HOT" | "WARM" | "COLD"
 local UnitLODPoints = {
-	HOT_ENTER = 150 ^ 2,
-	HOT_EXIT = 200 ^ 2,
+	HOT_ENTER = 350 ^ 2,
+	HOT_EXIT = 500 ^ 2,
 
-	WARM_ENTER = 500 ^ 2,
-	WARM_EXIT = 650 ^ 2,
+	WARM_ENTER = 800 ^ 2,
+	WARM_EXIT = 950 ^ 2,
 }
 local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
 	local delta = unitPos - cameraPos

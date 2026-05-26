@@ -1,4 +1,6 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local App = require("@self/ui/App")
 local Outposts = require("../outposts/client")
@@ -7,6 +9,7 @@ local Plots = require("../plots/client")
 local SMUnits = require("../units/client/stateMachineUnit")
 local Vide = require("@self/ui/Vide")
 local observers = require("../accounts/shared/utils/observers")
+local waitFor = require("./shared/waitFor")
 
 local isLoaded = false
 observers.observeCharacter(Players.LocalPlayer, function(char)
@@ -25,3 +28,10 @@ observers.observeCharacter(Players.LocalPlayer, function(char)
 end)
 
 Vide.mount(App, Players.LocalPlayer.PlayerGui)
+
+waitFor.Descendant(Workspace, "OceanTexture"):andThen(function(obj: Texture)
+	RunService.Heartbeat:Connect(function(dt)
+		obj.OffsetStudsU += dt * 2
+		obj.OffsetStudsV += dt * 3
+	end)
+end)

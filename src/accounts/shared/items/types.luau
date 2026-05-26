@@ -16,6 +16,7 @@ export type ItemInfo = {
 export type Item = {
 	read itemId: string,
 	read amount: number,
+	read hotbar: number?,
 }
 
 return {}

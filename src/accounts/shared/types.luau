@@ -49,10 +49,10 @@ local accountTemplate: Account = {
 		-- ["774b9d34-083d-4b93-b3e7-755780d3b683"] = { unitId = "tiger1", assignedSquad = 1 },
 	},
 	items = {
-		["1"] = { amount = 6, itemId = "wheat" },
-		["2"] = { amount = 1, itemId = "wheat_farm" },
-		["3"] = { amount = 3, itemId = "housing1" },
-		["4"] = { amount = 3, itemId = "academy1" },
+		["1"] = { amount = 6, itemId = "wheat", hotbar = 6 },
+		["2"] = { amount = 1, itemId = "wheat_farm", hotbar = 5 },
+		["3"] = { amount = 3, itemId = "housing1", hotbar = 3 },
+		["4"] = { amount = 3, itemId = "academy1", hotbar = 4 },
 	},
 }
 

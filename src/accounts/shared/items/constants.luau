@@ -16,7 +16,7 @@ local itemsById: { [string]: ItemInfo } = {
 	},
 	-- Factories
 	wheat_farm = {
-		name = "Wheat Field",
+		name = "Wheat Farm",
 		type = "Building",
 		data = {
 			size = Vector2.new(4, 4),
@@ -42,7 +42,7 @@ local itemsById: { [string]: ItemInfo } = {
 }
 
 local function getItem(itemId: string): ItemInfo
-	assert(itemsById[itemId], `itemId {itemId} is missing`)
+	-- assert(itemsById[itemId], `itemId {itemId} is missing`)
 	return itemsById[itemId]
 end
 

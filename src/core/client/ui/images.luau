@@ -6,6 +6,7 @@ return {
 	ContainerBG = "rbxassetid://134670407910211",
 	ContainerRed = "rbxassetid://132095640798349",
 	TilingDots = "rbxassetid://107681192851449",
+	CloseButton = "rbxassetid://109061823374874",
 
 	Icons = {
 		Luck = "rbxassetid://74013476167224",
@@ -28,5 +29,7 @@ return {
 		Settings = "rbxassetid://126732317463294",
 		Research = "rbxassetid://126731721021665",
 		Backpack = "rbxassetid://114300691056425",
+		Oil = "rbxassetid://136302382967450",
+		Army = "rbxassetid://88304991966525",
 	},
 }
