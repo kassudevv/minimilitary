@@ -22,6 +22,7 @@ type Instances = {
 	UIGradient: UIGradient,
 	UIGridLayout: UIGridLayout,
 	UIListLayout: UIListLayout,
+	UIStroke: UIStroke,
 }
 
 type AnyInstance = Instance

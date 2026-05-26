@@ -50,4 +50,21 @@ function GradientHelper.create(fromColor: Color3, viaColor: Color3?, toColor: Co
 	return ColorSequence.new(keypoints)
 end
 
+function GradientHelper.transparency(...: number): NumberSequence
+	local steps = { ... }
+
+	assert(#steps >= 2, "Need at least 2 transparency values")
+
+	local keypoints = {}
+	local count = #steps - 1
+
+	for i, transparency in ipairs(steps) do
+		local time = (i - 1) / count
+
+		table.insert(keypoints, NumberSequenceKeypoint.new(time, transparency))
+	end
+
+	return NumberSequence.new(keypoints)
+end
+
 return GradientHelper

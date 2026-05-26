@@ -6,7 +6,9 @@ local Ripple = require("../../../../../Packages/Ripple")
 local Vide = require("../Vide")
 local VideCharm = require("../../../../../Packages/VideCharm")
 local accountStore = require("../../../../accounts/client/store")
+local colors = require("../colors")
 local fonts = require("../utils/fonts")
+local gradient = require("../gradient")
 local images = require("../images")
 local items = require("../../../../accounts/shared/items")
 local store = require("../store")
@@ -39,17 +41,16 @@ StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
 local function HotbarItem(
 	item: Item,
-	special: { icon: string, title: string, cb: () -> (), isOpen: any }?,
+	special: { icon: string, title: string, cb: () -> (), isOpen: any, link: string }?,
 	props: { equipItem: (item: Item) -> () }
 )
 	local def: items.ItemInfo? = not special and items.getItem(item.itemId) or nil
-	local store = store.Inventory
 
 	local hovered = source(false)
 	local pressed = source(false)
 
 	local equipped = derive(function()
-		return store.equippedItem() == item.itemId
+		return (store.Inventory.equippedItem() == item.itemId) or (special and store.Main.currentMenu() == special.link)
 	end)
 
 	local scaleGoal = derive(function()
@@ -67,14 +68,26 @@ local function HotbarItem(
 
 	local strokeColor = derive(function()
 		if equipped() or special and special.isOpen() then
-			return Color3.fromHex("#ffffff")
+			return colors.slate["50"]
 		end
 
 		if hovered() then
-			return Color3.fromHex("#2e2c46")
+			return colors.slate["900"]
 		end
 
-		return Color3.fromHex("#0d0d15")
+		return colors.slate["950"]
+	end)
+
+	local backgroundColor = derive(function()
+		if equipped() or special and special.isOpen() then
+			return colors.slate["50"]
+		end
+
+		if hovered() then
+			return colors.slate["900"]
+		end
+
+		return colors.slate["950"]
 	end)
 
 	local getPreferredInput = usePreferredInput()
@@ -86,7 +99,8 @@ local function HotbarItem(
 			Scale = scale,
 		}),
 
-		BackgroundTransparency = 0.4,
+		BackgroundTransparency = 0.8,
+		BackgroundColor3 = colors.slate["950"],
 		LayoutOrder = (item.hotbar or 10) + 10,
 
 		Activated = function()
@@ -129,13 +143,10 @@ local function HotbarItem(
 		create("Frame")({
 			Size = UDim2.fromScale(0.96, 0.96),
 			BackgroundTransparency = 0,
-			BackgroundColor3 = Color3.fromHex("#363636"),
+			BackgroundColor3 = backgroundColor,
 
 			create("UIGradient")({
-				Transparency = NumberSequence.new({
-					NumberSequenceKeypoint.new(0, 0.4),
-					NumberSequenceKeypoint.new(1, 0.8),
-				}),
+				Transparency = gradient.transparency(1, 0.5),
 				Rotation = 90,
 			}),
 
@@ -155,12 +166,12 @@ local function HotbarItem(
 				Position = special and fs(0.5, 0.5) or fs(0.5, 0.025),
 				BackgroundTransparency = 1,
 				Text = wrapLabel(def and def.name or special and special.title or item.itemId),
-				TextColor3 = Color3.fromHex("#FFFFFF"),
+				TextColor3 = colors.slate["50"],
 				TextSize = special and 34 or 24,
 				FontFace = special and fonts.inter.bold or fonts.inter.semibold,
 
 				create("UIStroke")({
-					Color = Color3.fromHex("#000000"),
+					Color = colors.slate["900"],
 					Thickness = special and 3 or 2,
 					Transparency = 0,
 				}),
@@ -173,11 +184,11 @@ local function HotbarItem(
 					Position = fu(0, 8, 1, -8),
 					AnchorPoint = v(0, 1),
 					BackgroundTransparency = 0.8,
-					BackgroundColor3 = Color3.fromHex("#05070e"),
+					BackgroundColor3 = colors.slate["950"],
 					Size = fo(24, 24),
 
 					create("UIStroke")({
-						Color = Color3.fromHex("#ffffff"),
+						Color = colors.slate["50"],
 						Thickness = 2,
 						Transparency = 0.7,
 					}),
@@ -190,7 +201,7 @@ local function HotbarItem(
 						Position = fs(0.5, 0.5),
 						BackgroundTransparency = 1,
 						Text = `{item and item.hotbar or 0}`,
-						TextColor3 = Color3.fromHex("#FFFFFF"),
+						TextColor3 = colors.slate["50"],
 						TextSize = 20,
 						FontFace = special and fonts.inter.bold or fonts.inter.semibold,
 					}),
@@ -202,7 +213,6 @@ local function HotbarItem(
 end
 
 local function unequipItem()
-	print("HERE")
 	task.spawn(function()
 		local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
 		waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
@@ -336,6 +346,7 @@ return function()
 			amount = 1,
 			hotbar = 1,
 		}, {
+			link = "army",
 			icon = images.Icons.Army,
 			title = "Army",
 			cb = makeToggleMenu("army"),
@@ -349,6 +360,7 @@ return function()
 			amount = 1,
 			hotbar = 2,
 		}, {
+			link = "inventory",
 			icon = images.Icons.Backpack,
 			title = "Inventory",
 			cb = makeToggleMenu("inventory"),

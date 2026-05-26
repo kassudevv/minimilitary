@@ -53,42 +53,130 @@ function Inventory()
 		Position = function()
 			return fu(0.5, 0, 0.5, getTransition())
 		end,
-		BackgroundTransparency = 0,
-		BackgroundColor3 = Color3.fromHex("#292929"),
+		BackgroundTransparency = 0.5,
 
-		create("UIGradient")({
-			Color = gradient.create(colors.slate["50"], colors.slate["300"]),
-			Rotation = 90,
-		}),
+		-- BackgroundColor3 = Color3.fromHex("#292929"),
 
-		create("UIStroke")({
-			Color = colors.black,
-			StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
-			Thickness = 0.01,
-			Transparency = 0,
-		}),
+		-- create("UIStroke")({
+		-- 	StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+		-- 	Thickness = 0.0075,
+		-- 	BorderStrokePosition = Enum.BorderStrokePosition.Outer,
+		-- 	Color = colors.slate["950"],
+		-- }),
+		-- create("UIStroke")({
+		-- 	StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+		-- 	Thickness = 0.005,
+		-- 	BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		-- 	Color = colors.slate["50"],
+		-- 	Transparency = 0.8,
+		-- }),
 
-		create("UIListLayout")({
-			FillDirection = Enum.FillDirection.Vertical,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Top,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
-		}),
+		-- create("UIListLayout")({
+		-- 	FillDirection = Enum.FillDirection.Vertical,
+		-- 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		-- 	VerticalAlignment = Enum.VerticalAlignment.Top,
+		-- 	SortOrder = Enum.SortOrder.LayoutOrder,
+		-- 	Padding = UDim.new(0, 8),
+		-- }),
+
+		-- create("Frame")({
+		-- 	Size = fu(1, 0, 0, 0),
+		-- 	AutomaticSize = Enum.AutomaticSize.Y,
+		-- 	BackgroundTransparency = 0,
+		-- 	create("UIGradient")({
+		-- 		Color = gradient.create(colors.blue["200"], colors.blue["400"]),
+		-- 		Rotation = 90,
+		-- 	}),
+		-- 	create("UIStroke")({
+		-- 		StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+		-- 		Thickness = 0.05,
+		-- 		BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		-- 		Color = colors.slate["50"],
+		-- 		Transparency = 0.6,
+		-- 	}),
+
+		-- 	create("Frame")({
+		-- 		Position = fu(0, -30, 0.5, 0),
+		-- 		AnchorPoint = v(0, 0.5),
+		-- 		AutomaticSize = Enum.AutomaticSize.XY,
+		-- 		BackgroundTransparency = 1,
+
+		-- 		create("UIListLayout")({
+		-- 			FillDirection = Enum.FillDirection.Horizontal,
+		-- 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+		-- 			VerticalAlignment = Enum.VerticalAlignment.Center,
+		-- 			SortOrder = Enum.SortOrder.LayoutOrder,
+		-- 			Padding = UDim.new(0, 8),
+		-- 		}),
+
+		-- 		create("ImageLabel")({
+		-- 			Position = fs(0, 0.5),
+		-- 			AnchorPoint = v(0, 0.5),
+		-- 			Size = fo(100, 100),
+		-- 			AutomaticSize = Enum.AutomaticSize.XY,
+		-- 			BackgroundTransparency = 1,
+		-- 			Image = images.Icons.Backpack,
+		-- 		}),
+		-- 		create("TextLabel")({
+		-- 			Position = fs(0, 0.5),
+		-- 			AnchorPoint = v(0, 0.5),
+		-- 			AutomaticSize = Enum.AutomaticSize.XY,
+		-- 			BackgroundTransparency = 1,
+		-- 			TextColor3 = colors.slate["50"],
+		-- 			FontFace = fonts.inter.bold,
+		-- 			Text = "Inventory",
+		-- 			TextSize = 64,
+		-- 			create("UIStroke")({
+		-- 				StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+		-- 				Thickness = 0.05,
+		-- 				BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		-- 				Color = colors.slate["950"],
+		-- 				Transparency = 0,
+		-- 			}),
+		-- 		}),
+		-- 	}),
+		-- 	ImageButton({
+		-- 		Position = fu(1, -20, 0, 20),
+		-- 		AnchorPoint = v(1, 0),
+		-- 		Size = fo(100, 100),
+		-- 		Image = images.CloseButton,
+		-- 		Activated = function()
+		-- 			store.Main.currentMenu("")
+		-- 		end,
+		-- 	}),
+		-- }),
 
 		create("Frame")({
 			Size = fu(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1,
 
-			ImageButton({
-				Position = fu(1, -20, 0, 20),
-				AnchorPoint = v(1, 0),
-				Size = fo(100, 100),
-				Image = images.CloseButton,
-				Activated = function()
-					store.Main.currentMenu("")
-				end,
+			create("Frame")({
+				Position = fs(0.5, 0.5),
+				AnchorPoint = v(0.5, 0.5),
+				Size = fo(300, 110),
+
+				create("UIGradient")({
+					Color = gradient.create(colors.blue["200"], colors.blue["400"]),
+					Rotation = 90,
+				}),
+
+				create("UIStroke")({
+					StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+					Thickness = 0.04,
+					BorderStrokePosition = Enum.BorderStrokePosition.Outer,
+					Color = colors.slate["950"],
+				}),
+
+				create("UIStroke")({
+					StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize,
+					Thickness = 0.03,
+					BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+					Color = colors.white,
+					Transparency = 0.7,
+				}),
+
+				create("UICorner")({ CornerRadius = UDim.new(0, 16) }),
 			}),
 		}),
 	})
