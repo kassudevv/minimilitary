@@ -29,7 +29,7 @@ function SMUnits.init(self: SMUnits)
 
 	--state machine
 	Tick.every(0, function(dt)
-		for _, u in self.units do
+		for _, u in self.unitsArr do
 			u.stateMachine:tick(dt)
 		end
 	end)
@@ -37,11 +37,9 @@ function SMUnits.init(self: SMUnits)
 	local tick_rate = 1 / 5
 	Tick.every(tick_rate, function()
 		self.targetGrid:rebuild(self.units)
-		debug.profilebegin("allticker")
-		for _, u in self.units do
+		for _, u in self.unitsArr do
 			targeting.tickUnit(u, self.targetGrid)
 		end
-		debug.profileend()
 	end)
 
 	-- local cursor = 1
@@ -168,7 +166,9 @@ end
 function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit.SMUnit)
 	local idx = table.find(self.unitsArr, unit)
 	if idx then
-		table.remove(self.unitsArr, idx)
+		local n = #self.unitsArr
+		self.unitsArr[idx] = self.unitsArr[n]
+		self.unitsArr[n] = nil
 	end
 	self.units[unit.guid] = nil
 

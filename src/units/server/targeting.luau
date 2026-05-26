@@ -1,3 +1,4 @@
+--!optimize 2
 -- server/targeting.luau
 local SMUnit = require("./unit")
 local spatialGrid = require("./spatialGrid")
