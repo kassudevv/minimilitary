@@ -65,6 +65,10 @@ local UnitLODPoints = {
 	WARM_EXIT = 1000 ^ 2,
 }
 local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
+	if true then
+		return "HOT"
+	end
+
 	local delta = unitPos - cameraPos
 	local distSq = delta:Dot(delta)
 
@@ -322,7 +326,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 128 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	self.LOD = "HOT"
@@ -353,8 +357,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 		end
 
 		local params = unitRaycast.getRaycastParams()
-		local ground =
-			Workspace:Raycast(snapshot.position.Position + Vector3.new(0, 100, 0), -Vector3.yAxis * 150, params)
+		local ground = Workspace:Raycast(snapshot.position.Position, -Vector3.yAxis * 5, params)
 		if ground then
 			self.model:PivotTo(
 				CFrame.new(
@@ -373,7 +376,7 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.health, 1)
 	if self.LOD == "HOT" then
-		self.healthBarGui.MaxDistance = 128
+		self.healthBarGui.MaxDistance = 1
 	end
 end
 

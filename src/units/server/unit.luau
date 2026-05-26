@@ -39,6 +39,7 @@ type SMUnitData = {
 	damageQueue: { [number]: number },
 	lastMoveInterruptTs: number,
 	isThinking: boolean,
+	nextActionTs: number,
 }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
@@ -53,6 +54,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 	self.health = def.health
 	self.damageQueue = {}
 	self.lastMoveInterruptTs = 0
+	self.nextActionTs = os.clock() + math.random() * 3
 
 	self.stateMachine = stateMachine.new({
 		state = "idle",
@@ -168,7 +170,7 @@ function SMUnit.new(def: types.Unit, owner: Player?, guid: string, position: CFr
 
 	self.pathfinder = PathfindingService:CreatePath({
 		AgentRadius = 4, -- Increases the NPC's collision footprint (default is 2)
-		AgentHeight = 5,
+		AgentHeight = 1,
 		AgentCanJump = true,
 		WaypointSpacing = 64,
 	})
@@ -229,7 +231,7 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 
 	for i, wp in wps do
 		local params = unitRaycast.getRaycastParams()
-		local rcResult = Workspace:Raycast(wp + Vector3.new(0, 50, 0), -Vector3.yAxis * 100, params)
+		local rcResult = Workspace:Raycast(wp, -Vector3.yAxis * 5, params)
 		if rcResult then
 			wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
 		end

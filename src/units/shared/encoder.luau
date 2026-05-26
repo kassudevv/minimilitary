@@ -4,8 +4,8 @@ local stateMachine = require("./stateMachine")
 local unitTypes = require("./types")
 
 --* ENCODE WAYPOINTS TO BUF
-local COORD_MULTIPLIER = 16
-local Y_MULTIPLIER = 32 -- tighter vertical range → finer precision
+local COORD_MULTIPLIER = 4
+local Y_MULTIPLIER = 8 -- tighter vertical range → finer precision
 local function encodeWaypoints(waypoints: { Vector3 }): buffer
 	local serArr = Squash.array(Squash.Vector3int16())
 	local cursor = Squash.cursor()
@@ -87,36 +87,6 @@ function decodeUnits(buf: buffer): { unitTypes.UnitSnapshot }
 	local cursor = Squash.frombuffer(buf)
 	return unitArraySerializer.des(cursor)
 end
-
--- local UnitRecord = Squash.record({
--- 	itemId = Squash.T(Squash.string()),
--- 	owner = Squash.T(Squash.string()),
--- 	position = Squash.T(Squash.CFrame(Squash.vlq())),
--- 	id = Squash.T(Squash.vlq()),
--- })
--- function encodeUnits(units: { unitTypes.UnitSnapshot })
--- 	local cursor = Squash.cursor()
-
--- 	local buffs = TableUtil.Map(units, function(unit: unitTypes.UnitSnapshot)
--- 		local uCursor = Squash.cursor()
--- 		UnitRecord.ser(uCursor, {
--- 			itemId = unit.itemId,
--- 			owner = unit.owner,
--- 			position = unit.position,
--- 			id = unit.id,
--- 		})
--- 		return Squash.tobuffer(uCursor)
--- 	end)
-
--- 	local buffArr = Squash.array(Squash.buffer())
--- 	buffArr.ser(cursor, buffs)
-
--- 	return Squash.tobuffer(cursor)
--- end
--- function decodeUnits(buf: buffer)
--- 	local cursor = Squash.frombuffer(buf)
--- 	return UnitRecord.des(cursor)
--- end
 
 return {
 	encodeWaypoints = encodeWaypoints,

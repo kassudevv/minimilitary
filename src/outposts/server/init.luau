@@ -176,7 +176,7 @@ function Outpost.tick(self: Outpost, elapsed: number)
 					SMUnits:SpawnUnit({
 						unitId = unitSpawnAttr.get(s) or "gunner",
 						position = s.CFrame,
-						replicate = false,
+						replicate = true,
 					})
 				)
 			end)
