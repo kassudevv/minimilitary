@@ -108,18 +108,13 @@ function Outpost.new(guid: string, root: Folder): Outpost
 	end)
 
 	-- load colliders and env parts
-	waitFor.Descendant(Workspace, "LineOfSightBlockers"):andThen(function(LOSBlockers: Folder)
-		local env = root:FindFirstChild("Env") :: Folder
+	waitFor.Descendant(self.root, "Env"):andThen(function(env: Model)
 		for _, p in env:GetDescendants() do
 			if not p:IsA("BasePart") then
 				continue
 			end
 
-			p.Parent = LOSBlockers
-			if p.Name == "Collider" then
-				p.Transparency = 1
-				table.insert(self.colliders, p)
-			end
+			CollectionService:AddTag(p, "NoUnitLOS")
 		end
 	end)
 
@@ -283,7 +278,7 @@ function Outposts.init(self: Outposts)
 		self.outposts[guid] = Outpost.new(guid, c :: Folder)
 	end
 
-	Tick.every(1, function(dt)
+	Tick.every(1 / 5, function(dt)
 		for _, o in self.outposts do
 			o:tick(dt)
 		end

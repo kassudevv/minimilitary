@@ -80,6 +80,7 @@ function Plot.claim(self: Plot, plr: Player)
 
 	self:loadState(plr)
 	self:charInit()
+	self.template:AddPersistentPlayer(plr)
 end
 
 local defaultArea: any = {}
@@ -155,6 +156,15 @@ function Plots.init(self: Plots)
 		self.plots[index] = Plot.new(plotSpawn, index)
 	end
 
+	observers.observePlayers(function(plr)
+		return function()
+			local plrPlot = self:getPlayerPlot(plr)
+			if plrPlot then
+				plrPlot:reset()
+			end
+		end
+	end)
+
 	network.Plots.RequestPlot.OnServerInvoke = function(plr: Player)
 		if self:getPlayerPlot(plr) then
 			return nil
@@ -186,13 +196,6 @@ function Plots.init(self: Plots)
 		plot:placeBuilding(buildingId, col, row, rot)
 		return true
 	end
-
-	Players.PlayerRemoving:Connect(function(player)
-		local p = self:getPlayerPlot(player)
-		if p then
-			p:reset()
-		end
-	end)
 end
 
 function Plots.getPlayerPlot(self: Plots, plr: Player): Plot?

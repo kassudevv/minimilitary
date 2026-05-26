@@ -132,7 +132,7 @@ local typeToStats: { [Type]: StatDefinitionOrVariant } = {
 
 -- apply base stats to unit stats
 for _, u in unitsById do
-	u.scale = u.scale or 1
+	u.scale = (u.scale or 1) * 1.5
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
 
 	local variant = u.variant

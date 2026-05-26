@@ -34,7 +34,7 @@ function SMUnits.init(self: SMUnits)
 		end
 	end)
 
-	local tick_rate = 1 / 5
+	local tick_rate = 1 / 10
 	Tick.every(tick_rate, function()
 		self.targetGrid:rebuild(self.units)
 		for _, u in self.unitsArr do
@@ -87,7 +87,7 @@ function SMUnits.init(self: SMUnits)
 		local rand = {
 			"gunner",
 		}
-		for i = 1, 300 do
+		for i = 1, 70 do
 			local id = rand[((i - 1) % #rand) + 1]
 			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
@@ -95,19 +95,25 @@ function SMUnits.init(self: SMUnits)
 
 		local account = accountStore.getAccount(plr.Name)
 		if account then
-			local batchReplicate = {}
 			local char = plr.Character or plr.CharacterAdded:Wait()
+
+			local target = char:GetPivot()
+			local groundFormation = unitRaycast.buildFormation(target.Position, #TableUtil.Keys(account.units), 5)
+
+			local counter = 1
+			local batchReplicate = {}
 			for guid, uData in account.units do
 				table.insert(
 					batchReplicate,
 					self:SpawnUnit({
 						guid = guid,
 						unitId = uData.unitId,
-						position = char:GetPivot(),
+						position = CFrame.new(groundFormation[counter]) * target.Rotation,
 						replicate = false,
 						owner = plr,
 					})
 				)
+				counter += 1
 			end
 			self:ReplicateUnits(batchReplicate)
 		end

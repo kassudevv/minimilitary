@@ -62,8 +62,8 @@ local UnitLODPoints = {
 	HOT_ENTER = 150 ^ 2,
 	HOT_EXIT = 200 ^ 2,
 
-	WARM_ENTER = 300 ^ 2,
-	WARM_EXIT = 400 ^ 2,
+	WARM_ENTER = 500 ^ 2,
+	WARM_EXIT = 650 ^ 2,
 }
 local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
 	local delta = unitPos - cameraPos
@@ -324,7 +324,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	self.stateMachine:transition("idle", {})
 
 	self.healthBarGui = ReplicatedStorage.VFX.UnitInfo:Clone()
-	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 1 or 1
+	self.healthBarGui.MaxDistance = self.owner == Players.LocalPlayer.Name and 64 or 1
 	self.healthBarGui.Parent = self.model.PrimaryPart
 
 	self.LOD = "HOT"
@@ -355,7 +355,8 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 		end
 
 		local params = unitRaycast.getRaycastParams()
-		local ground = Workspace:Raycast(snapshot.position.Position, -Vector3.yAxis * 5, params)
+		local ground =
+			Workspace:Raycast(snapshot.position.Position + Vector3.new(0, 10, 0), -Vector3.yAxis * 50, params)
 		if ground then
 			self.model:PivotTo(
 				CFrame.new(
@@ -374,7 +375,7 @@ function SMUnit.setHealth(self: SMUnit, amt: number)
 	local p = (self.healthBarGui:FindFirstChild("HB") :: Frame):FindFirstChild("Progress") :: Frame
 	p.Size = UDim2.fromScale(self.health / self.def.health, 1)
 	if self.LOD == "HOT" then
-		self.healthBarGui.MaxDistance = 1
+		self.healthBarGui.MaxDistance = 64
 	end
 end
 
@@ -443,70 +444,35 @@ function SMUnits.init(self: SMUnits)
 	unitRaycast:initRaycastParams()
 	unitRaycast:initLosRaycastParams()
 
-	self:initControls()
+	self:InitControls()
+	self:StartTicking()
+	self:InitNetwork()
 
-	Tick.every(0, function(dt)
-		for _, u in self.unitsArr do
-			u.stateMachine:tick(dt)
-		end
+	return Promise.new(function(resolve, reject, onCancel)
+		network.Units.LoadUnits.OnClientEvent:Once(function(buf: buffer)
+			resolve()
+		end)
+
+		network.Units.RequestUnits:FireServer()
 	end)
+end
 
-	-- local lodCheckAccum = 0
-	-- RunService.Heartbeat:Connect(function(dt)
-	-- 	lodCheckAccum += dt
-	-- 	if lodCheckAccum < 1 / 4 then
-	-- 		return
-	-- 	end
-	-- 	lodCheckAccum = 0
-
-	-- 	local to = Workspace.Camera.CFrame.Position
-	-- 	for i, u in self.unitsArr do
-	-- 		u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
-	-- 		if u.LOD == "COLD" and u.model.Parent ~= nil then
-	-- 			u.model.Parent = nil
-	-- 		elseif u.LOD ~= "COLD" and u.model.Parent == nil then
-	-- 			u.model.Parent = Workspace.NPCs
-	-- 		end
-	-- 	end
-	-- end)
-
-	local cursor = 1
-	Tick.every(0, function()
-		local processed = 0
-		local maxPerTick = 3
-		local to = Workspace.Camera.CFrame.Position
-
-		while processed < maxPerTick do
-			local k = self.unitsArr[cursor]
-			if not k then
-				cursor = 1
-				break
-			end
-			local u = self.unitsArr[cursor]
-
-			u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
-
-			-- distance culling
-			if u.LOD == "COLD" and u.model.Parent ~= nil then
-				u.model.Parent = nil
-				for _, p in u.model:GetDescendants() do
-					if p:IsA("BasePart") then
-						p.CanCollide = false
-						p.Anchored = true
-					end
-				end
-			elseif u.LOD ~= "COLD" and u.model.Parent == nil then
-				u.model.Parent = Workspace.NPCs
-				for _, p in u.model:GetDescendants() do
-					if p:IsA("BasePart") then
-						p.CanCollide = false
-						p.Anchored = p.Name == "HumanoidRootPart"
-					end
-				end
+function SMUnits.InitNetwork(self: SMUnits)
+	network.Units.LoadUnits.OnClientEvent:Connect(function(buf: buffer)
+		local snapshots = encoder.decodeUnits(buf)
+		for _, snapshot in snapshots do
+			if self.units[snapshot.id] then
+				print("attempted duplicate unit load")
+				continue
 			end
 
-			cursor += 1
-			processed += 1
+			local unit = constants.getUnit(snapshot.itemId)
+			assert(unit ~= nil, "unit is nil")
+
+			local u = SMUnit.new(unit, snapshot)
+			table.insert(self.unitsArr, u)
+			self.units[snapshot.id] = u
+			task.wait()
 		end
 	end)
 
@@ -556,26 +522,53 @@ function SMUnits.init(self: SMUnits)
 			end
 		end
 	end)
+end
 
-	network.Units.LoadUnits.OnClientEvent:Connect(function(buf: buffer)
-		local snapshots = encoder.decodeUnits(buf)
-		for _, snapshot in snapshots do
-			if self.units[snapshot.id] then
-				print("attempted duplicate unit load")
-				continue
-			end
-
-			local unit = constants.getUnit(snapshot.itemId)
-			assert(unit ~= nil, "unit is nil")
-
-			local u = SMUnit.new(unit, snapshot)
-			table.insert(self.unitsArr, u)
-			self.units[snapshot.id] = u
-			task.wait()
+function SMUnits.StartTicking(self: SMUnits)
+	Tick.every(0, function(dt)
+		for _, u in self.unitsArr do
+			u.stateMachine:tick(dt)
 		end
 	end)
-	task.wait()
-	network.Units.RequestUnits:FireServer()
+
+	local cursor = 1
+	Tick.every(0, function()
+		local processed = 0
+		local maxPerTick = 3
+		local to = Workspace.Camera.CFrame.Position
+
+		while processed < maxPerTick do
+			local k = self.unitsArr[cursor]
+			if not k then
+				cursor = 1
+				break
+			end
+			local u = self.unitsArr[cursor]
+
+			u.LOD = getLOD(u.LOD, u.model:GetPivot().Position, to)
+
+			if u.LOD == "COLD" and u.model.Parent ~= nil then
+				u.model.Parent = nil
+				for _, p in u.model:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.CanCollide = false
+						p.Anchored = true
+					end
+				end
+			elseif u.LOD ~= "COLD" and u.model.Parent == nil then
+				u.model.Parent = Workspace.NPCs
+				for _, p in u.model:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.CanCollide = false
+						p.Anchored = p.Name == "HumanoidRootPart"
+					end
+				end
+			end
+
+			cursor += 1
+			processed += 1
+		end
+	end)
 end
 
 function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit)
@@ -590,7 +583,7 @@ function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit)
 	unit:cleanup()
 end
 
-function SMUnits.initControls(self: SMUnits)
+function SMUnits.InitControls(self: SMUnits)
 	UserInputService.InputBegan:Connect(function(input, gp)
 		local enabled = store.movementMode()
 

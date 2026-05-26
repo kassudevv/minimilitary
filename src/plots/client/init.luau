@@ -1,4 +1,5 @@
 local Building = require("@self/Building")
+local PromiseTyped = require("../../Packages/PromiseTyped")
 local area = require("./shared/area")
 local conf = require("@game/ReplicatedStorage/src/plots/shared/conf")
 local grid = require("@game/ReplicatedStorage/src/plots/shared/grid")
@@ -77,15 +78,22 @@ end
 
 local Plots = {}
 
-function Plots.init(self: Plots)
-	local p = network.Plots.RequestPlot:InvokeServer()
-	if not p then
-		return
-	end
+function Plots.init(self: Plots): PromiseTyped.Class
+	return PromiseTyped.new(function(resolve, reject, onCancel)
+		local p = network.Plots.RequestPlot:InvokeServer()
+		if not p then
+			reject("request plot failed..")
+			return
+		end
 
-	self.plot = Plot.new(p)
-	self.plot:init()
+		self.plot = Plot.new(p)
+		self.plot:init()
 
+		resolve()
+	end)
+end
+
+function Plots.InitNetwork(self: Plots)
 	network.Plots.ReplicateBuilding.OnClientEvent:Connect(function(snapshot: types.BuildingSnapshot)
 		self.plot:connectBuilding(snapshot)
 	end)

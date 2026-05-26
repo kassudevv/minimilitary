@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local Charm = require("../../Packages/Charm")
 local CharmSync = require("../../Packages/CharmSync")
 local Ripple = require("../../Packages/Ripple")
+local TableUtil = require("../../Packages/TableUtil")
 local network = require("../core/shared/network")
 local types = require("./shared/types")
 local waitFor = require("../core/shared/waitFor")
@@ -22,7 +23,7 @@ function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 
 	self.getState, self.setState = Charm.signal(types.outpostTemplate)
 
-	local err, root: Model = waitFor.Descendant(workspace, snapshot.rootName, 60 * 15):await()
+	local err, root: Model = waitFor.Descendant(workspace, snapshot.rootName):await()
 	self.root = root
 
 	local flagTween = Ripple.createTween(
@@ -34,23 +35,29 @@ function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 		} :: Ripple.TweenOptions
 	)
 
-	local prev: types.Outpost
+	local prev: types.Outpost?
 	Charm.effect(function()
 		local state = self.getState() :: types.Outpost
-		if not prev then
-			prev = state
-		end
-
-		-- print("[outpost] sync: ", state, "cap progress: ", state.captureProgress)
 
 		flagTween:setGoal(math.abs((state.captureProgress / 2) - 1) * 15)
 
-		prev = state
+		task.defer(function()
+			prev = state
+		end)
 	end)
 
-	for _, c in snapshot.colliders do
-		c.CanCollide = false
-	end
+	waitFor.Descendant(self.root, "Env"):andThen(function(env: Model)
+		for _, p in env:GetDescendants() do
+			if not p:IsA("BasePart") then
+				continue
+			end
+
+			if p.Name == "Collider" then
+				p.Transparency = 1
+				p.CanCollide = false
+			end
+		end
+	end)
 
 	local colors: { [string]: Color3 } = {
 		green = Color3.fromHex("#00ff77"),
@@ -58,14 +65,13 @@ function Outpost.new(snapshot: types.OutpostSnapshot): Outpost
 		red = Color3.fromHex("#ff0000"),
 	}
 
-	waitFor.Descendants(self.root, { "CaptureBeam", "CaptureMesh", "Owner" }, 60 * 15):andThen(function(obj: { any })
+	waitFor.Descendants(self.root, { "CaptureBeam", "CaptureMesh", "Owner" }):andThen(function(obj: { any })
 		local captureBeam = obj[1] :: Beam
 		local captureMesh = obj[2] :: MeshPart
 		local ownerLbl = obj[3] :: TextLabel
 
 		Charm.effect(function()
 			local state = self.getState() :: types.Outpost
-			print("Outpost State: ", state)
 
 			if state.status == "idle" then
 				if state.captureProgress == 2 and state.owner ~= "pve" then

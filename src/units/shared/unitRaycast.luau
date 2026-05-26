@@ -7,28 +7,9 @@ local waitFor = require("../../core/shared/waitFor")
 local losParams = RaycastParams.new()
 local losInitialized = false
 
-local function initLosRaycastParams()
-	if losInitialized then
-		return
-	end
-	losInitialized = true
-
-	local blockers = Workspace.PVE:WaitForChild("LineOfSightBlockers")
-
-	local function refresh()
-		losParams.FilterType = Enum.RaycastFilterType.Include
-		losParams.FilterDescendantsInstances = { blockers }
-	end
-
-	refresh()
-
-	-- re-include if folder is replaced entirely (edge case)
-	Workspace.PVE.ChildAdded:Connect(function(child)
-		if child.Name == "LineOfSightBlockers" then
-			refresh()
-		end
-	end)
-end
+local CollectionService = game:GetService("CollectionService")
+local IGNORE_TAG = "NoUnitRaycast"
+local LOS_TAG = "NoUnitLOS"
 
 local function getLosRaycastParams(): RaycastParams
 	return losParams
@@ -93,9 +74,6 @@ local function trackPlayer(player: Player)
 	end)
 end
 
-local CollectionService = game:GetService("CollectionService")
-local IGNORE_TAG = "NoUnitRaycast"
-
 local function initTaggedIgnored()
 	for _, instance in CollectionService:GetTagged(IGNORE_TAG) do
 		addIgnored(instance)
@@ -103,6 +81,20 @@ local function initTaggedIgnored()
 
 	CollectionService:GetInstanceAddedSignal(IGNORE_TAG):Connect(addIgnored)
 	CollectionService:GetInstanceRemovedSignal(IGNORE_TAG):Connect(removeIgnored)
+end
+
+local function initLosRaycastParams()
+	if losInitialized then
+		return
+	end
+	losInitialized = true
+
+	for _, instance in CollectionService:GetTagged(LOS_TAG) do
+		addIgnored(instance)
+	end
+
+	CollectionService:GetInstanceAddedSignal(LOS_TAG):Connect(addIgnored)
+	CollectionService:GetInstanceRemovedSignal(LOS_TAG):Connect(removeIgnored)
 end
 
 local function initRaycastParams()
@@ -166,7 +158,7 @@ end
 function buildFormation(center: Vector3, amt: number, padding: number): { Vector3 }
 	local positions: { Vector3 } = {}
 
-	local spacing: number = 5 + padding
+	local spacing: number = padding
 	local width: number = math.ceil(math.sqrt(amt))
 
 	for i = 1, amt do
