@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 local Inventory = require("./Inventory")
 local Ripple = require("../../../../../Packages/Ripple")
 local Vide = require("../Vide")
@@ -36,7 +37,11 @@ local HOTBAR_BUTTON_SIZE = fo(128, 128)
 
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-local function HotbarItem(item: Item, special: { icon: string, title: string, cb: () -> (), isOpen: any }?)
+local function HotbarItem(
+	item: Item,
+	special: { icon: string, title: string, cb: () -> (), isOpen: any }?,
+	props: { equipItem: (item: Item) -> () }
+)
 	local def: items.ItemInfo? = not special and items.getItem(item.itemId) or nil
 	local store = store.Inventory
 
@@ -92,18 +97,7 @@ local function HotbarItem(item: Item, special: { icon: string, title: string, cb
 			if not def then
 				return
 			end
-			local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-			waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
-				if store.equippedItem() ~= item.itemId then
-					waitFor.Descendant(Players.LocalPlayer.Backpack, item.itemId):andThen(function(tool: Tool)
-						hum:EquipTool(tool)
-						store.equippedItem(item.itemId)
-					end)
-				else
-					hum:UnequipTools()
-					store.equippedItem("")
-				end
-			end)
+			props.equipItem(item)
 		end,
 
 		changed("GuiState", function(state: Enum.GuiState)
@@ -207,8 +201,69 @@ local function HotbarItem(item: Item, special: { icon: string, title: string, cb
 	})
 end
 
+local function unequipItem()
+	print("HERE")
+	task.spawn(function()
+		local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+		waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
+			hum:UnequipTools()
+			store.Inventory.equippedItem("")
+		end)
+	end)
+end
+
+local MENU_BINDS = {
+	"army",
+	"inventory",
+}
+
+local INDEX_TO_KEYCODE = {
+	Enum.KeyCode.One,
+	Enum.KeyCode.Two,
+	Enum.KeyCode.Three,
+	Enum.KeyCode.Four,
+	Enum.KeyCode.Five,
+	Enum.KeyCode.Six,
+	Enum.KeyCode.Seven,
+	Enum.KeyCode.Eight,
+	Enum.KeyCode.Nine,
+	Enum.KeyCode.Zero,
+}
+
 return function()
 	local accountCharm = VideCharm.useSignalState(accountStore.getAccount)
+	local getPreferredInput = usePreferredInput()
+
+	local function equipItem(item: items.Item)
+		task.spawn(function()
+			local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+			waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
+				if store.Inventory.equippedItem() ~= item.itemId then
+					waitFor.Descendant(Players.LocalPlayer.Backpack, item.itemId):andThen(function(tool: Tool)
+						hum:EquipTool(tool)
+						store.Inventory.equippedItem(item.itemId)
+					end)
+				else
+					hum:UnequipTools()
+					store.Inventory.equippedItem("")
+				end
+			end)
+		end)
+	end
+
+	local function toggleMenu(name: string)
+		store.Main.currentMenu(if store.Main.currentMenu() ~= name then name else "")
+	end
+
+	local function makeToggleMenu(name: string)
+		return function()
+			local new = if store.Main.currentMenu() ~= name then name else ""
+			if new ~= "" then
+				unequipItem()
+			end
+			store.Main.currentMenu(new)
+		end
+	end
 
 	local function getHotbarItems(): { [string]: Item }
 		local account = accountCharm()
@@ -220,11 +275,47 @@ return function()
 			if not item.hotbar then
 				continue
 			end
-			print("Item:", item)
 			items[guid] = item
 		end
 		return items
 	end
+
+	effect(function()
+		local preferredInput = getPreferredInput()
+
+		if preferredInput == Enum.PreferredInput.KeyboardAndMouse then
+			local conn: RBXScriptConnection
+			conn = UserInputService.InputBegan:Connect(function(input, gp)
+				if gp then
+					return
+				end
+
+				for i, kc in INDEX_TO_KEYCODE do
+					if input.KeyCode == kc then
+						if MENU_BINDS[i] then
+							toggleMenu(MENU_BINDS[i])
+							unequipItem()
+						end
+
+						for guid, item in getHotbarItems() do
+							if item.hotbar == i then
+								store.Main.currentMenu("")
+
+								equipItem(item)
+								break
+							end
+						end
+
+						return
+					end
+				end
+			end)
+
+			cleanup(function()
+				conn:Disconnect()
+			end)
+		end
+	end)
 
 	return create("Frame")({
 		AnchorPoint = v(0.5, 1),
@@ -247,13 +338,11 @@ return function()
 		}, {
 			icon = images.Icons.Army,
 			title = "Army",
-			cb = function()
-				store.Main.currentMenu(if store.Main.currentMenu() ~= "army" then "army" else "")
-			end,
+			cb = makeToggleMenu("army"),
 			isOpen = Vide.derive(function()
 				return store.Main.currentMenu() == "army"
 			end),
-		}),
+		}, { equipItem = equipItem }),
 
 		HotbarItem({
 			itemId = "inventory",
@@ -262,16 +351,14 @@ return function()
 		}, {
 			icon = images.Icons.Backpack,
 			title = "Inventory",
-			cb = function()
-				store.Main.currentMenu(if store.Main.currentMenu() ~= "inventory" then "inventory" else "")
-			end,
+			cb = makeToggleMenu("inventory"),
 			isOpen = Vide.derive(function()
 				return store.Main.currentMenu() == "inventory"
 			end),
-		}),
+		}, { equipItem = equipItem }),
 
 		values(getHotbarItems, function(item: Item, i)
-			return HotbarItem(item)
+			return HotbarItem(item, nil, { equipItem = equipItem })
 		end),
 	})
 end
