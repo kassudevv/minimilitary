@@ -56,7 +56,7 @@ function SMUnits.init(self: SMUnits)
 		end
 
 		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 16)
-		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 8)
+		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 16)
 
 		for i, u in groundUnits do
 			task.spawn(function()
@@ -89,8 +89,11 @@ function SMUnits.init(self: SMUnits)
 		local rand: { constants.UnitId } = {
 			"abrams",
 			"tiger",
+			"apache",
+			"gunner",
+			"gunner",
 		}
-		for i = 1, 2 do
+		for i = 1, 5 do
 			local id = rand[((i - 1) % #rand) + 1]
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
 		end

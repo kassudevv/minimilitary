@@ -6,13 +6,19 @@ local gradient = require("../gradient")
 local images = require("../images")
 local items = require("../../../../accounts/shared/items")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local store = require("../store")
 local usePreferredInput = require("../utils/usePreferredInput")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local Ripple = require("../../../../../Packages/Ripple")
 local Vide = require("../Vide")
 local VideCharm = require("../../../../../Packages/VideCharm")
+local draw = require("../../../shared/draw")
+local network = require("../../../shared/network")
+local stateMachineUnit = require("../../../../units/client/stateMachineUnit")
+local unitRaycast = require("../../../../units/shared/unitRaycast")
 local waitFor = require("../../../shared/waitFor")
 local wrapLabel = require("../utils/wrapLabel")
 type Item = items.Item
@@ -86,6 +92,7 @@ local SPECIAL_BINDS: { Binding } = {
 	{ label = "Army", link = "army", icon = images.Icons.Army },
 }
 
+local p: BasePart
 local function HotbarItem(item: Item, binding: Binding?, i: any)
 	local def: items.ItemInfo? = not binding and items.getItem(item.itemId) or nil
 
@@ -134,6 +141,65 @@ local function HotbarItem(item: Item, binding: Binding?, i: any)
 	end)
 
 	local getPreferredInput = usePreferredInput()
+
+	effect(function()
+		if store.Main.currentMenu() == "army" then
+			for _, u in stateMachineUnit.unitsArr do
+				if not u or u.stateMachine.state == "dead" or u.owner ~= Players.LocalPlayer.Name then
+					continue
+				end
+
+				local hl = ReplicatedStorage.TroopHighlight:Clone()
+				hl.Enabled = true
+				hl.Parent = u.model
+				cleanup(function()
+					hl:Destroy()
+				end)
+			end
+
+			local conn: RBXScriptConnection
+			conn = UserInputService.InputBegan:Connect(function(input, gp)
+				if gp then
+					return
+				end
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					local params = unitRaycast.getRaycastParams()
+					local mLoc = UserInputService:GetMouseLocation()
+					local ray = Workspace.Camera:ViewportPointToRay(mLoc.X, mLoc.Y)
+
+					local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+					if not result then
+						return
+					end
+
+					for _, u in stateMachineUnit.unitsArr do
+						if u.owner == Players.LocalPlayer.Name then
+							u.stateMachine:transition("idle", {})
+						end
+					end
+
+					if p then
+						p:Destroy()
+					end
+
+					p = draw.sphere(result.Position, 3)
+					task.delay(3, function()
+						p:Destroy()
+					end)
+
+					for _, u in stateMachineUnit.unitsArr do
+						if u.owner == Players.LocalPlayer.Name then
+						end
+					end
+
+					network.Units.RequestPath:FireServer(result.Position)
+				end
+			end)
+			cleanup(function()
+				conn:Disconnect()
+			end)
+		end
+	end)
 
 	return create("ImageButton")({
 		AnchorPoint = v(0.5, 1),

@@ -33,7 +33,7 @@ local conf = {
 		name = "Abrams Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.Abrams,
-		shotDelay = 0.833,
+		shotDelay = 0.67,
 
 		health = 1,
 		scale = 2.2,
@@ -46,7 +46,7 @@ local conf = {
 		name = "Tiger Tank",
 		type = "tank",
 		model = ReplicatedStorage.NPCs.Tiger,
-		shotDelay = 0.833,
+		shotDelay = 0.67,
 
 		health = 0.8,
 		scale = 2,

@@ -12,6 +12,7 @@ local TableUtil = require("../../../Packages/TableUtil")
 local TaskQueue = require("../../core/shared/TaskQueue")
 local Tick = require("../../core/shared/Tick")
 local constants = require("../shared/constants")
+local draw = require("../../core/shared/draw")
 local encoder = require("../shared/encoder")
 local flags = require("./flags")
 local network = require("../../core/shared/network")
@@ -150,9 +151,7 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				end,
 				tick = function(dt) end,
 				onExit = function(next)
-					if self.def.type == "tank" then
-						self:stopAnimation("Idle")
-					end
+					self:stopAnimation("Idle")
 				end,
 			},
 			moving = {
@@ -164,6 +163,19 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					state.distanceInSegment = 0
 					state.accum = 0
 					state.root = self.model.PrimaryPart
+
+					local beam = ReplicatedStorage.ArrowBeam:Clone()
+					beam.Parent = Workspace.Terrain
+					beam.A0.WorldCFrame = self.model:GetPivot()
+					beam.A1.WorldCFrame = CFrame.new(
+						state.path.segments[#state.path.segments].b
+							+ Vector3.new(
+								0,
+								(self.def.offset or 0) + (self.def.movementMode == "flying" and 24 or 0),
+								0
+							)
+					)
+					self.cache["beam"] = beam
 				end,
 				tick = function(dt)
 					local state = self.stateMachine.data
@@ -207,10 +219,17 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 
 					local cf = CFrame.new(pos) * state.rotation
 
+					if self.cache["beam"] then
+						self.cache["beam"].A0.WorldCFrame = cf
+					end
+
 					bulkMoveQueue:Add({ state.root, cf })
 				end,
 				onExit = function(next)
 					self:stopAnimation("RunAnim")
+					if self.cache["beam"] then
+						self.cache["beam"]:Destroy()
+					end
 				end,
 			},
 			targeting = {
@@ -422,7 +441,6 @@ function SMUnit.playAnimation(self: SMUnit, anim: string)
 
 	self.loadedTracks[anim] = self.loadedTracks[anim] or self.animator:LoadAnimation(a)
 	if not self.loadedTracks[anim].IsPlaying then
-		print("Playing: ", anim)
 		self.loadedTracks[anim]:Play()
 	end
 end
@@ -490,7 +508,7 @@ function SMUnits.InitNetwork(self: SMUnits)
 			local u = SMUnit.new(unit, snapshot)
 			table.insert(self.unitsArr, u)
 			self.units[snapshot.id] = u
-			task.wait(math.random() * 0.1)
+			task.wait(math.random())
 		end
 	end)
 
@@ -601,32 +619,38 @@ function SMUnits.DestroyUnit(self: SMUnits, unit: SMUnit)
 	unit:cleanup()
 end
 
+-- local p: BasePart
 function SMUnits.InitControls(self: SMUnits)
-	UserInputService.InputBegan:Connect(function(input, gp)
-		local enabled = store.movementMode()
+	-- UserInputService.InputBegan:Connect(function(input, gp)
+	-- 	local enabled = store.movementMode()
 
-		if gp or not enabled then
-			return
-		end
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			local params = unitRaycast.getRaycastParams()
-			local mLoc = UserInputService:GetMouseLocation()
-			local ray = Workspace.Camera:ViewportPointToRay(mLoc.X, mLoc.Y)
+	-- 	if gp or not enabled then
+	-- 		return
+	-- 	end
+	-- 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	-- 		local params = unitRaycast.getRaycastParams()
+	-- 		local mLoc = UserInputService:GetMouseLocation()
+	-- 		local ray = Workspace.Camera:ViewportPointToRay(mLoc.X, mLoc.Y)
 
-			local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
-			if not result then
-				return
-			end
+	-- 		local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+	-- 		if not result then
+	-- 			return
+	-- 		end
 
-			for _, u in self.unitsArr do
-				if u.owner == Players.LocalPlayer.Name then
-					u.stateMachine:transition("idle", {})
-				end
-			end
+	-- 		for _, u in self.unitsArr do
+	-- 			if u.owner == Players.LocalPlayer.Name then
+	-- 				u.stateMachine:transition("idle", {})
+	-- 			end
+	-- 		end
 
-			network.Units.RequestPath:FireServer(result.Position)
-		end
-	end)
+	-- 		if p then
+	-- 			p:Destroy()
+	-- 		end
+	-- 		p = draw.labelledPoint(result.Position, "[debug] rally point")
+
+	-- 		network.Units.RequestPath:FireServer(result.Position)
+	-- 	end
+	-- end)
 end
 
 type SMUnits = typeof(SMUnits) & {
