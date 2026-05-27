@@ -3,6 +3,7 @@ print("Load server")
 local Players = game:GetService("Players")
 
 local accountStore = require("./accountStore")
+local network = require("@game/ReplicatedStorage/src/core/shared/network")
 
 local accounts = require("../server")
 local store = require("./store")
@@ -22,4 +23,8 @@ end)
 
 game:BindToClose(function()
 	store:closeAsync()
+end)
+
+network.Accounts.MoveItemToHotbar.OnServerEvent:Connect(function(plr: Player, guid: string, slot: number?)
+	accounts.moveItemToHotbar(plr, guid, slot)
 end)

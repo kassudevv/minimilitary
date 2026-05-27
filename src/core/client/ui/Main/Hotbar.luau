@@ -1,18 +1,18 @@
-local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
-local UserInputService = game:GetService("UserInputService")
-local Inventory = require("./Inventory")
-local Ripple = require("../../../../../Packages/Ripple")
-local Vide = require("../Vide")
-local VideCharm = require("../../../../../Packages/VideCharm")
+local accountActions = require("../../../../accounts/client/actions")
 local accountStore = require("../../../../accounts/client/store")
 local colors = require("../colors")
 local fonts = require("../utils/fonts")
 local gradient = require("../gradient")
 local images = require("../images")
 local items = require("../../../../accounts/shared/items")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
 local store = require("../store")
 local usePreferredInput = require("../utils/usePreferredInput")
+local UserInputService = game:GetService("UserInputService")
+local Ripple = require("../../../../../Packages/Ripple")
+local Vide = require("../Vide")
+local VideCharm = require("../../../../../Packages/VideCharm")
 local waitFor = require("../../../shared/waitFor")
 local wrapLabel = require("../utils/wrapLabel")
 type Item = items.Item
@@ -25,10 +25,7 @@ local effect = Vide.effect
 local cleanup = Vide.cleanup
 local show = Vide.show
 local values = Vide.values
-local indexes = Vide.indexes
 local spring = Vide.spring
-local mount = Vide.mount
-local batch = Vide.batch
 
 local fo = UDim2.fromOffset
 local fu = UDim2.new
@@ -39,18 +36,64 @@ local HOTBAR_BUTTON_SIZE = fo(128, 128)
 
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-local function HotbarItem(
-	item: Item,
-	special: { icon: string, title: string, cb: () -> (), isOpen: any, link: string }?,
-	props: { equipItem: (item: Item) -> () }
-)
-	local def: items.ItemInfo? = not special and items.getItem(item.itemId) or nil
+local function removeItemFromHotbar(guid: string)
+	accountActions.moveItemToHotbar(guid, nil)
+end
+
+local function equipItem(item: items.Item)
+	task.spawn(function()
+		local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+		waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
+			if store.Inventory.equippedItem() ~= item.itemId then
+				waitFor.Descendant(Players.LocalPlayer.Backpack, item.itemId):andThen(function(tool: Tool)
+					hum:EquipTool(tool)
+					store.Inventory.equippedItem(item.itemId)
+					store.Inventory.selectedSlot(item.hotbar or 0)
+					store.Main.currentMenu("")
+				end)
+			else
+				hum:UnequipTools()
+				store.Inventory.equippedItem("")
+				store.Inventory.selectedSlot(0)
+			end
+		end)
+	end)
+end
+
+local function unequipItem()
+	task.spawn(function()
+		local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+		waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
+			hum:UnequipTools()
+			store.Inventory.equippedItem("")
+			store.Inventory.selectedSlot(0)
+		end)
+	end)
+end
+
+local function toggleMenu(name: string)
+	local new = if store.Main.currentMenu() ~= name then name else ""
+	if new ~= "" then
+		unequipItem()
+	end
+	store.Main.currentMenu(new)
+end
+
+type Binding = { label: string, link: string, icon: string }
+local SPECIAL_BINDS: { Binding } = {
+	{ label = "Inventory", link = "inventory", icon = images.Icons.Backpack },
+	{ label = "Research", link = "research", icon = images.Icons.Research },
+	{ label = "Army", link = "army", icon = images.Icons.Army },
+}
+
+local function HotbarItem(item: Item, binding: Binding?, i: any)
+	local def: items.ItemInfo? = not binding and items.getItem(item.itemId) or nil
 
 	local hovered = source(false)
 	local pressed = source(false)
 
 	local equipped = derive(function()
-		return (store.Inventory.equippedItem() == item.itemId) or (special and store.Main.currentMenu() == special.link)
+		return (store.Inventory.selectedSlot() == item.hotbar) or (binding and store.Main.currentMenu() == binding.link)
 	end)
 
 	local scaleGoal = derive(function()
@@ -67,7 +110,7 @@ local function HotbarItem(
 	local scale = spring(scaleGoal, 0.1, 0.8)
 
 	local strokeColor = derive(function()
-		if equipped() or special and special.isOpen() then
+		if equipped() or binding and store.Main.currentMenu() == binding.link then
 			return colors.slate["50"]
 		end
 
@@ -79,7 +122,7 @@ local function HotbarItem(
 	end)
 
 	local backgroundColor = derive(function()
-		if equipped() or special and special.isOpen() then
+		if equipped() or binding and store.Main.currentMenu() == binding.link then
 			return colors.slate["50"]
 		end
 
@@ -104,14 +147,23 @@ local function HotbarItem(
 		LayoutOrder = (item.hotbar or 10) + 10,
 
 		Activated = function()
-			if special then
-				special.cb()
+			if store.Main.currentMenu() == "inventory" and not binding then
+				removeItemFromHotbar(i())
 				return
 			end
+
+			if binding then
+				store.Inventory.selectedSlot(0)
+				toggleMenu(binding.link)
+				return
+			end
+
 			if not def then
 				return
 			end
-			props.equipItem(item)
+
+			store.Main.currentMenu("")
+			equipItem(item)
 		end,
 
 		changed("GuiState", function(state: Enum.GuiState)
@@ -155,24 +207,24 @@ local function HotbarItem(
 			create("ImageLabel")({
 				Size = fs(1, 1),
 				BackgroundTransparency = 1,
-				Image = def and "" or special and special.icon or "",
+				Image = def and def.icon or binding and binding.icon or "",
 				ScaleType = Enum.ScaleType.Fit,
 			}),
 
 			create("TextLabel")({
 				Name = "Item",
 				AutomaticSize = Enum.AutomaticSize.XY,
-				AnchorPoint = special and v(0.5, 0.5) or v(0.5, 0),
-				Position = special and fs(0.5, 0.5) or fs(0.5, 0.025),
+				AnchorPoint = binding and v(0.5, 0.5) or v(0.5, 0),
+				Position = binding and fs(0.5, 0.5) or fs(0.5, 0.025),
 				BackgroundTransparency = 1,
-				Text = wrapLabel(def and def.name or special and special.title or item.itemId),
-				TextColor3 = colors.slate["50"],
-				TextSize = special and 34 or 24,
-				FontFace = special and fonts.inter.bold or fonts.inter.semibold,
+				Text = wrapLabel(def and def.name or binding and binding.label or item.itemId),
+				TextColor3 = if binding then colors.slate["50"] else colors.slate["200"],
+				TextSize = binding and 30 or 24,
+				FontFace = binding and fonts.inter.bold or fonts.inter.semibold,
 
 				create("UIStroke")({
-					Color = colors.slate["900"],
-					Thickness = special and 3 or 2,
+					Color = colors.slate["950"],
+					Thickness = binding and 3 or 2,
 					Transparency = 0,
 				}),
 			}),
@@ -203,7 +255,7 @@ local function HotbarItem(
 						Text = `{item and item.hotbar or 0}`,
 						TextColor3 = colors.slate["50"],
 						TextSize = 20,
-						FontFace = special and fonts.inter.bold or fonts.inter.semibold,
+						FontFace = fonts.inter.semibold,
 					}),
 				}),
 					0
@@ -211,21 +263,6 @@ local function HotbarItem(
 		}),
 	})
 end
-
-local function unequipItem()
-	task.spawn(function()
-		local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-		waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
-			hum:UnequipTools()
-			store.Inventory.equippedItem("")
-		end)
-	end)
-end
-
-local MENU_BINDS = {
-	"army",
-	"inventory",
-}
 
 local INDEX_TO_KEYCODE = {
 	Enum.KeyCode.One,
@@ -243,37 +280,6 @@ local INDEX_TO_KEYCODE = {
 return function()
 	local accountCharm = VideCharm.useSignalState(accountStore.getAccount)
 	local getPreferredInput = usePreferredInput()
-
-	local function equipItem(item: items.Item)
-		task.spawn(function()
-			local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-			waitFor.Descendant(char, "Humanoid"):andThen(function(hum: Humanoid)
-				if store.Inventory.equippedItem() ~= item.itemId then
-					waitFor.Descendant(Players.LocalPlayer.Backpack, item.itemId):andThen(function(tool: Tool)
-						hum:EquipTool(tool)
-						store.Inventory.equippedItem(item.itemId)
-					end)
-				else
-					hum:UnequipTools()
-					store.Inventory.equippedItem("")
-				end
-			end)
-		end)
-	end
-
-	local function toggleMenu(name: string)
-		store.Main.currentMenu(if store.Main.currentMenu() ~= name then name else "")
-	end
-
-	local function makeToggleMenu(name: string)
-		return function()
-			local new = if store.Main.currentMenu() ~= name then name else ""
-			if new ~= "" then
-				unequipItem()
-			end
-			store.Main.currentMenu(new)
-		end
-	end
 
 	local function getHotbarItems(): { [string]: Item }
 		local account = accountCharm()
@@ -302,16 +308,21 @@ return function()
 
 				for i, kc in INDEX_TO_KEYCODE do
 					if input.KeyCode == kc then
-						if MENU_BINDS[i] then
-							toggleMenu(MENU_BINDS[i])
+						if SPECIAL_BINDS[i] then
+							toggleMenu(SPECIAL_BINDS[i].link)
 							unequipItem()
 						end
 
 						for guid, item in getHotbarItems() do
 							if item.hotbar == i then
 								store.Main.currentMenu("")
-
-								equipItem(item)
+								if store.Inventory.selectedSlot() == item.hotbar then
+									unequipItem(item)
+									store.Inventory.selectedSlot(0)
+								else
+									equipItem(item)
+									store.Inventory.selectedSlot(i)
+								end
 								break
 							end
 						end
@@ -327,9 +338,22 @@ return function()
 		end
 	end)
 
+	local getTransition, transitionTween = Ripple.useTween(
+		1080,
+		{
+			easing = "quadOut",
+			duration = 0.15,
+		} :: Ripple.TweenOptions
+	)
+	effect(function()
+		transitionTween:setGoal(store.Main.currentMenu() == "research" and 1080 or 0)
+	end)
+
 	return create("Frame")({
 		AnchorPoint = v(0.5, 1),
-		Position = fu(0.5, 0, 1, 0),
+		Position = function()
+			return fu(0.5, 0, 1, getTransition())
+		end,
 		Size = fs(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
@@ -341,36 +365,18 @@ return function()
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 
-		HotbarItem({
-			itemId = "army",
-			amount = 1,
-			hotbar = 1,
-		}, {
-			link = "army",
-			icon = images.Icons.Army,
-			title = "Army",
-			cb = makeToggleMenu("army"),
-			isOpen = Vide.derive(function()
-				return store.Main.currentMenu() == "army"
-			end),
-		}, { equipItem = equipItem }),
-
-		HotbarItem({
-			itemId = "inventory",
-			amount = 1,
-			hotbar = 2,
-		}, {
-			link = "inventory",
-			icon = images.Icons.Backpack,
-			title = "Inventory",
-			cb = makeToggleMenu("inventory"),
-			isOpen = Vide.derive(function()
-				return store.Main.currentMenu() == "inventory"
-			end),
-		}, { equipItem = equipItem }),
+		values(function()
+			return SPECIAL_BINDS
+		end, function(binding: Binding, i)
+			return HotbarItem({
+				itemId = binding.label,
+				amount = 1,
+				hotbar = i(),
+			}, binding)
+		end),
 
 		values(getHotbarItems, function(item: Item, i)
-			return HotbarItem(item, nil, { equipItem = equipItem })
+			return HotbarItem(item, nil, i)
 		end),
 	})
 end

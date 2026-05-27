@@ -55,6 +55,15 @@ local function addItem(player: Player, item: Item)
 	end)
 end
 
+local function moveItemToHotbar(player: Player, guid: string, slot: number?)
+	return store:updateImmutable(player, function(account: Account)
+		local item = objects.set(account.items[guid], "hotbar", slot)
+		return objects.join(account, {
+			items = objects.set(account.items, guid, item),
+		})
+	end)
+end
+
 local function addBuilding(player: Player, building: AccountPlotBuilding)
 	local id = HttpService:GenerateGUID(false)
 	return store:updateImmutable(player, function(account: Account)
@@ -140,6 +149,7 @@ end
 return {
 	sellItem = sellItem,
 	addItem = addItem,
+	moveItemToHotbar = moveItemToHotbar,
 	getBuilding = getBuilding,
 	addBuilding = addBuilding,
 	removeBuilding = removeBuilding,

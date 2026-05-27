@@ -31,6 +31,6 @@ return {
 		Research = "rbxassetid://126731721021665",
 		Backpack = "rbxassetid://114300691056425",
 		Oil = "rbxassetid://136302382967450",
-		Army = "rbxassetid://88304991966525",
+		Army = "rbxassetid://83708130055743",
 	},
 }

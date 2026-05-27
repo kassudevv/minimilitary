@@ -126,15 +126,15 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					gravestone.Parent = Workspace.Camera
 					self.stateMachine.data.gravestone = gravestone
 
-					if self.LOD == "HOT" then
-						if table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop") then
-							print("Died with LOD", self.LOD)
-							particles.emit({
-								vfx = "MissileImpactBig",
-								position = self.model:GetPivot().Position,
-								spread = 3,
-							})
-						end
+					if
+						self.LOD ~= "COLD" and table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop")
+					then
+						print("Died with LOD", self.LOD)
+						particles.emit({
+							vfx = "MissileImpactBig",
+							position = self.model:GetPivot().Position,
+							spread = 3,
+						})
 					end
 				end,
 				tick = function(dt)

@@ -297,6 +297,7 @@ function SMUnit.damage(self: SMUnit, amt: number)
 	network.Units.ReplicateHealth:FireAllClients(encoder.encodeHealth(self.id, self.health))
 
 	if self.health <= 0 then
+		print("do dead transition")
 		self.replicatedTransition(self, "dead", {})
 		return
 	end

@@ -1,10 +1,9 @@
 local Main = require("./Main")
+local Research = require("./Research")
 local Vide = require("./Vide")
 local px = require("./utils/px")
 
 function App()
-	px.usePx()
-
 	return Vide.create("ScreenGui")({
 		Name = "Gameplay",
 
@@ -12,6 +11,7 @@ function App()
 		IgnoreGuiInset = true,
 
 		Main(),
+		Research(),
 	})
 end
 

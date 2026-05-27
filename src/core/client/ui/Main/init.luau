@@ -33,46 +33,46 @@ return function()
 		AnchorPoint = v(0.5, 0.5),
 		Name = "Main",
 		Children = {
-			Inventory(),
 			Hotbar(),
-			create("Frame")({
-				Position = fs(0, 0.5),
-				AnchorPoint = v(0, 0.5),
-				BackgroundTransparency = 1,
-				AutomaticSize = Enum.AutomaticSize.XY,
+			Inventory(),
+			-- create("Frame")({
+			-- 	Position = fs(0, 0.5),
+			-- 	AnchorPoint = v(0, 0.5),
+			-- 	BackgroundTransparency = 1,
+			-- 	AutomaticSize = Enum.AutomaticSize.XY,
 
-				create("UIListLayout")({
-					FillDirection = Enum.FillDirection.Vertical,
-					HorizontalAlignment = Enum.HorizontalAlignment.Left,
-					VerticalAlignment = Enum.VerticalAlignment.Center,
-					SortOrder = Enum.SortOrder.LayoutOrder,
-					Padding = UDim.new(0, 16),
-				}),
+			-- 	create("UIListLayout")({
+			-- 		FillDirection = Enum.FillDirection.Vertical,
+			-- 		HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			-- 		VerticalAlignment = Enum.VerticalAlignment.Center,
+			-- 		SortOrder = Enum.SortOrder.LayoutOrder,
+			-- 		Padding = UDim.new(0, 16),
+			-- 	}),
 
-				IconButton({
-					Text = "RESEARCH",
-					TextSize = 24,
-					Size = fo(80, 80),
-					Icon = images.Icons.Research,
-					Activated = function(a, b) end,
-				}),
+			-- 	IconButton({
+			-- 		Text = "RESEARCH",
+			-- 		TextSize = 24,
+			-- 		Size = fo(80, 80),
+			-- 		Icon = images.Icons.Research,
+			-- 		Activated = function(a, b) end,
+			-- 	}),
 
-				IconButton({
-					Text = "RESEARCH",
-					TextSize = 24,
-					Size = fo(80, 80),
-					Icon = images.Icons.Research,
-					Activated = function(a, b) end,
-				}),
+			-- 	IconButton({
+			-- 		Text = "RESEARCH",
+			-- 		TextSize = 24,
+			-- 		Size = fo(80, 80),
+			-- 		Icon = images.Icons.Research,
+			-- 		Activated = function(a, b) end,
+			-- 	}),
 
-				IconButton({
-					Text = "RESEARCH",
-					TextSize = 24,
-					Size = fo(80, 80),
-					Icon = images.Icons.Research,
-					Activated = function(a, b) end,
-				}),
-			}),
+			-- 	IconButton({
+			-- 		Text = "RESEARCH",
+			-- 		TextSize = 24,
+			-- 		Size = fo(80, 80),
+			-- 		Icon = images.Icons.Research,
+			-- 		Activated = function(a, b) end,
+			-- 	}),
+			-- }),
 
 			-- create("Frame")({
 			-- 	Position = fu(0.5, 0, 1, 0),

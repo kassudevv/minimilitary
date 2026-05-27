@@ -166,7 +166,7 @@ function Outpost.tick(self: Outpost, elapsed: number)
 	for s, u in self.spawners do
 		if #u.units == 0 and not u.pendingRespawn then
 			u.pendingRespawn = true
-			task.delay(math.random(10, 15), function()
+			task.delay(math.random(60, 90), function()
 				table.insert(
 					u.units,
 					SMUnits:SpawnUnit({
@@ -191,6 +191,10 @@ function Outpost.tickCaptureProgress(self: Outpost, elapsed: number)
 		end
 
 		local unit = SMUnits.units[guid]
+
+		if unit.stateMachine.state == "dead" then
+			continue
+		end
 
 		if not overlappingByPlayer[unit.owner] then
 			overlappingByPlayer[unit.owner] = {}

@@ -23,7 +23,7 @@ end
 
 local function scanTargets(unit: SMUnit.SMUnit, targetGrid: spatialGrid.SpatialGrid, now: number)
 	local attackRange = unit.def.range
-	local targetRange = attackRange * (unit.owner ~= "pve" and 1.5 or 1.1)
+	local targetRange = attackRange * (unit.owner ~= "pve" and 2 or 1.1)
 
 	-- aggro mode
 	if (now - unit.lastProjectileTs) < 30 then

@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local images = require("../../../core/client/ui/images")
 local types = require("./types")
 
 type ItemInfo = types.ItemInfo
@@ -10,6 +11,7 @@ local itemsById: { [string]: ItemInfo } = {
 	wheat = {
 		name = "Wheat",
 		type = "Crop",
+		icon = images.Icons.DiceGold,
 		data = {
 			value = 10,
 		} :: ItemCropData,
@@ -18,6 +20,7 @@ local itemsById: { [string]: ItemInfo } = {
 	wheat_farm = {
 		name = "Wheat Farm",
 		type = "Building",
+		icon = "",
 		data = {
 			size = Vector2.new(4, 4),
 		} :: ItemBuildingData,
@@ -26,6 +29,8 @@ local itemsById: { [string]: ItemInfo } = {
 	housing1 = {
 		name = "Housing I",
 		type = "Building",
+		icon = "",
+
 		data = {
 			size = Vector2.new(8, 8),
 		} :: ItemBuildingData,
@@ -34,6 +39,8 @@ local itemsById: { [string]: ItemInfo } = {
 	academy1 = {
 		name = "Academy I",
 		type = "Building",
+		icon = images.Icons.Dice,
+
 		data = {
 			size = Vector2.new(16, 16),
 			model = ReplicatedStorage.Buildings.barracks1,

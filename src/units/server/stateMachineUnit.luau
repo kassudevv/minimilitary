@@ -24,7 +24,9 @@ function SMUnits.init(self: SMUnits)
 	unitRaycast:initLosRaycastParams()
 
 	self.destroyCb = function(u: SMUnit.SMUnit)
-		self:DestroyUnit(u)
+		task.delay(10, function()
+			self:DestroyUnit(u)
+		end)
 	end
 
 	--state machine
@@ -53,8 +55,8 @@ function SMUnits.init(self: SMUnits)
 			table.insert(tbl, u)
 		end
 
-		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 1)
-		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 1)
+		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 8)
+		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 8)
 
 		for i, u in groundUnits do
 			task.spawn(function()
@@ -98,7 +100,7 @@ function SMUnits.init(self: SMUnits)
 			local char = plr.Character or plr.CharacterAdded:Wait()
 
 			local target = char:GetPivot()
-			local groundFormation = unitRaycast.buildFormation(target.Position, #TableUtil.Keys(account.units), 5)
+			local groundFormation = unitRaycast.buildFormation(target.Position, #TableUtil.Keys(account.units), 8)
 
 			local counter = 1
 			local batchReplicate = {}

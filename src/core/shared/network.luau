@@ -12,6 +12,7 @@ local RF, RE, URE = TypedRemote.parent()
 return {
 	Accounts = {
 		Patch = RE("Patch") :: RE<any>,
+		MoveItemToHotbar = RE("MoveItemToHotbar") :: RE<string, number?>,
 	},
 	Plots = {
 		RequestPlot = RF("RequestPlot") :: RF<(), (plotTypes.PlotSnapshot?)>,

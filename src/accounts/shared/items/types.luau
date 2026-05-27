@@ -10,6 +10,7 @@ export type ItemBuildingData = {
 export type ItemInfo = {
 	read type: "Crop" | "Building",
 	read name: string,
+	read icon: string,
 	read data: ItemCropData | ItemBuildingData | nil,
 }
 
