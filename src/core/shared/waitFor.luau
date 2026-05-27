@@ -7,7 +7,7 @@ function Descendant(parent: Instance, descendantName: string, timeout: number?)
 	end
 	return PromiseTyped.fromEvent(parent.DescendantAdded, function(d: Instance)
 		return d.Name == descendantName
-	end):timeout(timeout or math.huge)
+	end):timeout(timeout or 86400)
 end
 
 function Descendants(parent: Instance, descendantNames: { string }, timeout: number?): PromiseTyped.Class

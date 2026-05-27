@@ -231,7 +231,7 @@ function SMUnit.move(self: SMUnit, target: Vector3)
 
 	for i, wp in wps do
 		local params = unitRaycast.getRaycastParams()
-		local rcResult = Workspace:Raycast(wp, -Vector3.yAxis * 5, params)
+		local rcResult = Workspace:Raycast(wp, -Vector3.yAxis * 30, params)
 		if rcResult then
 			wps[i] = Vector3.new(wp.X, rcResult.Position.Y, wp.Z)
 		end

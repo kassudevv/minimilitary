@@ -55,7 +55,7 @@ function SMUnits.init(self: SMUnits)
 			table.insert(tbl, u)
 		end
 
-		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 8)
+		local flyingFormation = unitRaycast.buildFormation(target, #flyingUnits, 16)
 		local groundFormation = unitRaycast.buildFormation(target, #groundUnits, 8)
 
 		for i, u in groundUnits do
@@ -86,14 +86,18 @@ function SMUnits.init(self: SMUnits)
 	network.Units.RequestUnits.OnServerEvent:Connect(function(plr: Player)
 		self:ReplicateUnitsToPlayer(plr, TableUtil.Values(self.units))
 
-		local rand = {
-			"gunner",
+		local rand: { constants.UnitId } = {
+			"abrams",
+			"tiger",
 		}
-		for i = 1, 70 do
+		for i = 1, 2 do
 			local id = rand[((i - 1) % #rand) + 1]
-			assert(constants.getUnit(id) ~= nil, "invalid unitId")
 			accounts.addUnit(plr, { assignedSquad = 1, unitId = id })
 		end
+
+		-- accounts.addUnit(plr, { assignedSquad = 1, unitId = "abrams" })
+		-- accounts.addUnit(plr, { assignedSquad = 1, unitId = "tiger" })
+		-- accounts.addUnit(plr, { assignedSquad = 1, unitId = "apache" })
 
 		local account = accountStore.getAccount(plr.Name)
 		if account then
@@ -127,7 +131,7 @@ function SMUnits.SpawnUnit(
 	options: {
 		guid: string?,
 		owner: Player?,
-		unitId: string,
+		unitId: constants.UnitId,
 		position: CFrame,
 		replicate: boolean,
 	}

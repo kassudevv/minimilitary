@@ -1,3 +1,4 @@
+local constants = require("../../units/shared/constants")
 local items = require("./items")
 local types = require("./items/types")
 
@@ -17,7 +18,7 @@ export type AccountPlotBuilding = {
 }
 
 export type AccountUnit = {
-	read unitId: string,
+	read unitId: constants.UnitId,
 	read assignedSquad: number,
 }
 

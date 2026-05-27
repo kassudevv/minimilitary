@@ -6,7 +6,7 @@ local derive = Vide.derive
 
 return {
 	Main = {
-		currentMenu = source("research"),
+		currentMenu = source(""),
 	},
 	Inventory = {
 		equippedItem = source(""),

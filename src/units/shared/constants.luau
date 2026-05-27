@@ -4,14 +4,14 @@ local unitRaycast = require("./unitRaycast")
 type Unit = types.Unit
 type Type = types.Type
 
-local unitsById: { [string]: Unit } = {
+local conf = {
 	gunner = {
 		name = "Gunner",
 		type = "troop",
 		model = ReplicatedStorage.NPCs.Gunner,
 
 		health = 1,
-		scale = 0.8,
+		scale = 0.5,
 		range = 0.7,
 		speed = 1,
 		damage = 1,
@@ -23,7 +23,7 @@ local unitsById: { [string]: Unit } = {
 		model = ReplicatedStorage.NPCs.Juggernaut,
 
 		health = 5,
-		scale = 0.9,
+		scale = 0.7,
 		range = 0.7,
 		speed = 0.8,
 		damage = 0.3,
@@ -32,8 +32,8 @@ local unitsById: { [string]: Unit } = {
 	abrams = {
 		name = "Abrams Tank",
 		type = "tank",
-		model = ReplicatedStorage.NPCs.TankAbrams,
-		shotDelay = 0.48,
+		model = ReplicatedStorage.NPCs.Abrams,
+		shotDelay = 0.833,
 
 		health = 1,
 		scale = 2.2,
@@ -42,14 +42,14 @@ local unitsById: { [string]: Unit } = {
 		damage = 1,
 		firerate = 1,
 	},
-	tiger1 = {
-		name = "Tiger I Tank",
+	tiger = {
+		name = "Tiger Tank",
 		type = "tank",
-		model = ReplicatedStorage.NPCs.TankTiger1,
-		shotDelay = 0.48,
+		model = ReplicatedStorage.NPCs.Tiger,
+		shotDelay = 0.833,
 
 		health = 0.8,
-		scale = 1.8,
+		scale = 2,
 		range = 1,
 		speed = 1,
 		damage = 1,
@@ -63,7 +63,7 @@ local unitsById: { [string]: Unit } = {
 		movementMode = "flying",
 
 		health = 1,
-		scale = 1.2,
+		scale = 1.4,
 		range = 1,
 		speed = 1,
 		damage = 1,
@@ -83,7 +83,10 @@ local unitsById: { [string]: Unit } = {
 		damage = 1,
 		firerate = 1,
 	},
-} :: { [string]: Unit }
+}
+
+export type UnitId = keyof<typeof(conf)>
+local unitsById: { [UnitId]: Unit } = conf
 
 type StatDefinition = {
 	health: number,
@@ -131,7 +134,8 @@ local typeToStats: { [Type]: StatDefinitionOrVariant } = {
 }
 
 -- apply base stats to unit stats
-for _, u in unitsById do
+for k, u in unitsById do
+	u.itemId = k
 	u.scale = (u.scale or 1) * 1.5
 	u.offset = unitRaycast.calculateGroundOffset(u.model, u.scale)
 
@@ -148,13 +152,8 @@ for _, u in unitsById do
 	u.health = base.health * u.health
 end
 
-local function getUnit(itemId: string): Unit?
-	local u = unitsById[itemId]
-	if not u then
-		return nil
-	end
-	u.itemId = itemId
-	return u
+local function getUnit(itemId: UnitId): Unit
+	return unitsById[itemId]
 end
 
 return {

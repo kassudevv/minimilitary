@@ -62,8 +62,8 @@ local UnitLODPoints = {
 	HOT_ENTER = 350 ^ 2,
 	HOT_EXIT = 500 ^ 2,
 
-	WARM_ENTER = 800 ^ 2,
-	WARM_EXIT = 950 ^ 2,
+	WARM_ENTER = 600 ^ 2,
+	WARM_EXIT = 650 ^ 2,
 }
 local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3): UnitLOD
 	local delta = unitPos - cameraPos
@@ -87,6 +87,8 @@ local function getLOD(currentLod: UnitLOD, unitPos: Vector3, cameraPos: Vector3)
 
 	return currentLod
 end
+
+local bodyColors = { "#d5a386", "#d59678", "#d59a70", "#bd8963", "#8c6549" }
 
 export type SMUnit = setmetatable<SMUnitData, typeof(SMUnit)>
 function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
@@ -126,10 +128,8 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					gravestone.Parent = Workspace.Camera
 					self.stateMachine.data.gravestone = gravestone
 
-					if
-						self.LOD ~= "COLD" and table.find({ "helicopter", "tank", "plane" }, self.def.type or "troop")
-					then
-						print("Died with LOD", self.LOD)
+					local t = self.def.type
+					if self.LOD ~= "COLD" and (t == "helicopter" or t == "plane" or t == "tank") then
 						particles.emit({
 							vfx = "MissileImpactBig",
 							position = self.model:GetPivot().Position,
@@ -149,7 +149,11 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 					self:playAnimation("Idle")
 				end,
 				tick = function(dt) end,
-				onExit = function(next) end,
+				onExit = function(next)
+					if self.def.type == "tank" then
+						self:stopAnimation("Idle")
+					end
+				end,
 			},
 			moving = {
 				onEnter = function(prev)
@@ -309,6 +313,17 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 	humanoid.AutoRotate = false
 	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
+	local bc = self.model:FindFirstChildWhichIsA("BodyColors")
+	if bc then
+		local color = bodyColors[math.random(1, #bodyColors)]
+		bc.HeadColor3 = Color3.fromHex(color)
+		bc.LeftArmColor3 = Color3.fromHex(color)
+		bc.LeftLegColor3 = Color3.fromHex(color)
+		bc.RightArmColor3 = Color3.fromHex(color)
+		bc.RightLegColor3 = Color3.fromHex(color)
+		bc.TorsoColor3 = Color3.fromHex(color)
+	end
+
 	self.animator = humanoid:WaitForChild("Animator") :: Animator
 	self.loadedAnims = {}
 	self.loadedTracks = {}
@@ -365,6 +380,8 @@ function SMUnit.new(def: types.Unit, snapshot: types.UnitSnapshot): SMUnit
 				) * snapshot.position.Rotation
 			)
 		end
+
+		self:playAnimation("Core")
 	end)
 
 	return self
@@ -405,6 +422,7 @@ function SMUnit.playAnimation(self: SMUnit, anim: string)
 
 	self.loadedTracks[anim] = self.loadedTracks[anim] or self.animator:LoadAnimation(a)
 	if not self.loadedTracks[anim].IsPlaying then
+		print("Playing: ", anim)
 		self.loadedTracks[anim]:Play()
 	end
 end
@@ -466,13 +484,13 @@ function SMUnits.InitNetwork(self: SMUnits)
 				continue
 			end
 
-			local unit = constants.getUnit(snapshot.itemId)
+			local unit = constants.getUnit(snapshot.itemId :: constants.UnitId)
 			assert(unit ~= nil, "unit is nil")
 
 			local u = SMUnit.new(unit, snapshot)
 			table.insert(self.unitsArr, u)
 			self.units[snapshot.id] = u
-			task.wait()
+			task.wait(math.random() * 0.1)
 		end
 	end)
 

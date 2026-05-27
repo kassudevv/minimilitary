@@ -192,7 +192,7 @@ function Outpost.tickCaptureProgress(self: Outpost, elapsed: number)
 
 		local unit = SMUnits.units[guid]
 
-		if unit.stateMachine.state == "dead" then
+		if not unit or unit.stateMachine.state == "dead" then
 			continue
 		end
 
